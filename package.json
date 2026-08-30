@@ -1,0 +1,29 @@
+{
+  "name": "acoustom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Virtual Speaker Room Simulator monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{json,ts,tsx,js,jsx,css,scss,md}\"",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "db:migrate": "turbo run db:migrate",
+    "db:seed": "turbo run db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.2"
+  },
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
