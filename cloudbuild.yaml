@@ -1,0 +1,11 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - infra/Dockerfile.backend
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA
+      - apps/backend
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA

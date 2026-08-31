@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Speaker } from '@acoustom/types';
+import { apiUrl } from '../lib/api';
 
 export default function SpeakerCatalog({ onSelect }: { onSelect: (id: string) => void }) {
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
@@ -7,7 +8,7 @@ export default function SpeakerCatalog({ onSelect }: { onSelect: (id: string) =>
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/speakers')
+    fetch(apiUrl('/api/speakers'))
       .then((r) => r.json())
       .then((data: { speakers: Speaker[] }) => {
         setSpeakers(data.speakers);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSimulationStore } from '../store/simulation';
+import { apiUrl } from '../lib/api';
 
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 
@@ -52,7 +53,7 @@ export default function AudioPlayer() {
     source.buffer = audioBufferRef.current ?? await context.decodeAudioData(await audioFile.arrayBuffer());
     if (nextMode === 'simulated') {
       const responses = await Promise.all(
-        [currentSimulation!.impulseResponses.left, currentSimulation!.impulseResponses.right].map((url) => fetch(url, { cache: 'no-store' })),
+        [currentSimulation!.impulseResponses.left, currentSimulation!.impulseResponses.right].map((url) => fetch(apiUrl(url), { cache: 'no-store' })),
       );
       if (responses.some((response) => !response.ok)) throw new Error('Could not load the room impulse response.');
       const impulseResponses = await Promise.all(responses.map(async (response) => context.decodeAudioData(await response.arrayBuffer())));

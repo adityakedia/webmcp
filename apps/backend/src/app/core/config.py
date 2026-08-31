@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     SIMULATION_TIMEOUT: int = 300
     AUTH_SECRET: str = "change-this-in-production"
     AUTH_TOKEN_TTL_SECONDS: int = 60 * 60 * 24 * 30
+    NEON_AUTH_JWKS_URL: str | None = None
+    NEON_AUTH_ISSUER: str | None = None
+    NEON_AUTH_AUDIENCE: str | None = None
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

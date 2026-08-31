@@ -10,6 +10,8 @@ import hmac
 import json
 import secrets
 import time
+import httpx
+import jwt
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -53,6 +55,26 @@ async def current_user(
 ) -> User:
     if not credentials or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Sign in is required")
+    if settings.NEON_AUTH_JWKS_URL:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                response = await client.get(settings.NEON_AUTH_JWKS_URL)
+                response.raise_for_status()
+            token_header = jwt.get_unverified_header(credentials.credentials)
+            jwk = next(key for key in response.json()["keys"] if key["kid"] == token_header["kid"])
+            options = {"verify_aud": bool(settings.NEON_AUTH_AUDIENCE)}
+            payload = jwt.decode(credentials.credentials, jwt.algorithms.RSAAlgorithm.from_jwk(jwk), algorithms=[token_header.get("alg", "RS256")], issuer=settings.NEON_AUTH_ISSUER, audience=settings.NEON_AUTH_AUDIENCE, options=options)
+            subject = str(payload["sub"])
+            email = str(payload.get("email") or f"{subject}@neon-auth.local")
+            user = (await db.execute(select(User).where(User.id == subject))).scalar_one_or_none()
+            if not user:
+                user = User(id=subject, email=email, password_hash="neon-auth-managed")
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+            return user
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid Neon Auth session") from None
     try:
         encoded, signature = credentials.credentials.split(".", 1)
         expected = hmac.new(

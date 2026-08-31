@@ -1,5 +1,6 @@
 import { useSimulationStore } from '../store/simulation';
 import type { SimulationRequest, SimulationResult } from '@acoustom/types';
+import { apiUrl } from '../lib/api';
 
 export function useSimulation() {
   const { selectedSpeakerId, roomDimensions, speakerPositions, listenerPosition } = useSimulationStore();
@@ -21,7 +22,7 @@ export function useSimulation() {
       else throw new Error('The custom build profile is incomplete. Rebuild it before simulating.');
     }
 
-    const response = await fetch('/api/simulate', {
+    const response = await fetch(apiUrl('/api/simulate'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),

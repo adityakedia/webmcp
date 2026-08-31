@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ArrowRight, ChevronDown, Heart, Menu, Search, ShoppingBag, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebMcp, type CartItem } from './hooks/useWebMcp';
+import { apiUrl } from './lib/api';
+import { getNeonJwt, neonAuth } from './lib/neonAuth';
 import ProceduralSpeaker from './components/ProceduralSpeaker';
 import SimulatorPage from './components/SimulatorPage';
 import SimulationWorkspace from './components/SimulationWorkspace';
@@ -32,9 +34,9 @@ export default function App() {
   const updateCartQuantity = (productName: string, quantity: number) => { const next = quantity === 0 ? cartRef.current.filter((item) => item.productName !== productName) : cartRef.current.map((item) => item.productName === productName ? { ...item, quantity } : item); cartRef.current = next; setCart(next); return next; };
   const removeFromCart = (productName: string) => updateCartQuantity(productName, 0);
   const toggleLikeAndReturn = (name: string) => { const currentlyLiked = !likedRef.current.includes(name); const next = currentlyLiked ? [...likedRef.current, name] : likedRef.current.filter((item) => item !== name); likedRef.current = next; setLiked(next); return currentlyLiked; };
-  useEffect(() => { void fetch('/api/speakers/catalog').then(async (response) => { if (!response.ok) throw new Error('Catalog unavailable'); return response.json() as Promise<{ products: Product[] }>; }).then(({ products: catalog }) => setProducts(catalog)).catch(() => undefined); }, []);
+  useEffect(() => { void fetch(apiUrl('/api/speakers/catalog')).then(async (response) => { if (!response.ok) throw new Error('Catalog unavailable'); return response.json() as Promise<{ products: Product[] }>; }).then(({ products: catalog }) => setProducts(catalog)).catch(() => undefined); }, []);
   useEffect(() => { window.localStorage.setItem('acoustom-cart', JSON.stringify(cart)); }, [cart]);
-  useWebMcp({ products, getCart: () => cartRef.current, getLiked: () => likedRef.current, getAccessToken: () => window.localStorage.getItem('acoustom-access-token'), addToCart, updateCartQuantity, removeFromCart, toggleLike: toggleLikeAndReturn });
+  useWebMcp({ products, getCart: () => cartRef.current, getLiked: () => likedRef.current, getAccessToken: getNeonJwt, addToCart, updateCartQuantity, removeFromCart, toggleLike: toggleLikeAndReturn });
   return <div className="site-shell">
     <div className="announcement">Free delivery on all orders over €500 <ArrowRight size={14} /></div>
     <header className="nav-wrap"><button className="menu-trigger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">{menuOpen ? <X /> : <Menu />}<span>Menu</span></button><button className="wordmark" onClick={goHome}>ACOUSTOM<span>®</span></button><nav className={menuOpen ? 'nav-links open' : 'nav-links'}><a href="#speakers" onClick={goTo('speakers')}>Speakers</a><button onClick={goCompare}>Compare</button><button onClick={() => goSimulator()}>Listening lab</button><a href="#journal" onClick={goTo('journal')}>Journal</a><button onClick={goCustom}>Custom design</button></nav><div className="nav-actions"><button aria-label="Search"><Search /></button><button aria-label={`Bag, ${cart.reduce((total, item) => total + item.quantity, 0)} items`}><ShoppingBag /><sup>{cart.reduce((total, item) => total + item.quantity, 0)}</sup></button></div></header>
@@ -49,13 +51,14 @@ export default function App() {
 function ProductDetail({ product, onBack }: { product: Product; onBack: () => void }) { return <main className="detail-page"><button className="back-link" onClick={onBack}>← Back to collection</button><div className="detail-grid"><div className="detail-image"><img src={product.image} alt={product.name} /></div><div className="detail-copy"><p className="eyebrow">{product.tone} / {product.category}</p><h1>{product.name}</h1><p className="detail-type">{product.type}</p><p className="detail-price">{product.price} <span>per pair</span></p><p className="detail-description">{product.description}</p><button className="button dark">Add to bag <ArrowRight size={16} /></button><p className="detail-note">Complimentary delivery · 30-day listening trial</p></div></div><section className="detail-intro"><p className="eyebrow">The listening experience</p><h2>Everything you need.<br /><em>Nothing you don't.</em></h2><p>{product.name} is tuned for a natural, uncoloured presentation. Its controlled bass, open midrange, and effortless high frequencies let you hear the intent behind every recording.</p></section><section className="detail-panels"><div className="detail-panel"><p className="eyebrow">Engineering</p><h3>Built around the music</h3><p>Every cabinet, driver, and crossover decision is made to keep the signal clean and the timing coherent. This is the kind of detail you notice in the first bar—and appreciate for years.</p><a className="text-link" href="#specifications">See specifications <ArrowRight size={15} /></a></div><div className="detail-panel dark-panel"><p className="eyebrow">Room placement</p><h3>Give it room to breathe</h3><p>Start with the speakers slightly angled toward your listening position, then adjust by ear. We recommend a little space from the rear wall for the most open presentation.</p><button className="text-link">Open room guide <ArrowRight size={15} /></button></div></section><section className="specifications" id="specifications"><div className="spec-heading"><p className="eyebrow">Technical details</p><h2>Specifications</h2><p>Reference values for the {product.name}. These fields are structured to connect with the room simulator later.</p></div><div className="spec-table">{product.specs.map(([label, value]) => <div className="spec-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section><section className="detail-bottom"><p className="eyebrow">Find your fit</p><h2>Ready to hear<br /><em>the difference?</em></h2><button className="button dark" onClick={onBack}>Explore the collection <ArrowRight size={16} /></button></section></main>; }
 
 function CustomDesign({ onBack, products }: { onBack: () => void; products: Product[] }) {
-  const [accessToken, setAccessToken] = useState(() => window.localStorage.getItem('acoustom-access-token'));
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [savedConfigurationId, setSavedConfigurationId] = useState<string | null>(() => window.localStorage.getItem('acoustom-active-configuration-id'));
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [isHydrated, setIsHydrated] = useState(() => !window.localStorage.getItem('acoustom-active-configuration-id'));
   const lastSavedPayload = useRef<string | null>(null);
   const [finish, setFinish] = useState('Natural walnut'); const [shape, setShape] = useState('Standmount');
+  useEffect(() => { void getNeonJwt().then(setAccessToken); }, []);
   const [activeStep, setActiveStep] = useState(0); const [platformId, setPlatformId] = useState<AcousticPlatformId>('two_way_compact'); const [soundProfile, setSoundProfile] = useState<SoundProfile>('balanced'); const [roomSize, setRoomSize] = useState<'small' | 'medium' | 'large'>('medium'); const [listeningDistanceM, setListeningDistanceM] = useState(2.5);
   const [enclosure, setEnclosure] = useState<'ported' | 'sealed'>('ported'); const [bassCharacter, setBassCharacter] = useState<'tight' | 'balanced' | 'extended'>('balanced'); const [tuning, setTuning] = useState(42); const [netVolumeLitres, setNetVolumeLitres] = useState(14); const [portInnerDiameterMm, setPortInnerDiameterMm] = useState(50); const [portLengthMm, setPortLengthMm] = useState(200); const [dampingDescription, setDampingDescription] = useState('150 g Acousto-Q, distributed away from the port');
   const [cabinetSize, setCabinetSize] = useState<'compact' | 'standard' | 'large'>('standard'); const [grille, setGrille] = useState<'none' | 'magnetic_fabric' | 'perforated_metal'>('magnetic_fabric'); const [base, setBase] = useState<'plinth' | 'slim_feet' | 'stand'>('stand'); const [edgeProfile, setEdgeProfile] = useState<'soft_radius' | 'sculpted_radius'>('soft_radius');
@@ -72,7 +75,7 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
   const [platformOptions, setPlatformOptions] = useState<Array<{ id: AcousticPlatformId; label: string }>>([{ id: 'two_way_compact', label: 'SEAS Mimir · 2-way' }, { id: 'two_way_extended', label: 'SEAS Aphel · 2-way' }, { id: 'three_way_reference', label: 'SEAS 403 Revisited · 3-way' }, { id: 'subwoofer_active', label: 'Dayton DCS165-4 active sub' }]);
   useEffect(() => {
     const loadCatalog = async () => {
-      const response = await fetch('/api/custom-speakers/catalog');
+      const response = await fetch(apiUrl('/api/custom-speakers/catalog'));
       if (!response.ok) return;
       const catalog = await response.json() as CustomSpeakerCatalogResponse;
       setPlatformOptions(catalog.platforms.map((platform) => ({ id: platform.id, label: `${platform.name} · ${platform.architecture.replace('_', '-')}` })));
@@ -90,7 +93,7 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
   const createBuild = async () => {
     setIsSubmitting(true); setSubmitError(null);
     try {
-      const response = await fetch('/api/custom-speakers/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(configuration) });
+      const response = await fetch(apiUrl('/api/custom-speakers/'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(configuration) });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         const detail = body?.detail;
@@ -106,7 +109,7 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
     if (!accessToken || !savedConfigurationId || isHydrated) return;
     void (async () => {
       try {
-        const response = await fetch(`/api/configurations/${savedConfigurationId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const response = await fetch(apiUrl(`/api/configurations/${savedConfigurationId}`), { headers: { Authorization: `Bearer ${accessToken}` } });
         if (!response.ok) throw new Error('Configuration unavailable');
         const saved = await response.json() as { revision: number; configuration: CustomSpeakerConfiguration };
         const config = saved.configuration;
@@ -128,7 +131,7 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
     const timer = window.setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        const response = await fetch(savedConfigurationId ? `/api/configurations/${savedConfigurationId}` : '/api/configurations/', {
+        const response = await fetch(apiUrl(savedConfigurationId ? `/api/configurations/${savedConfigurationId}` : '/api/configurations/'), {
           method: savedConfigurationId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify({ configuration, expectedRevision: savedRevision, actor: 'user' }),
@@ -142,7 +145,8 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
     }, 800);
     return () => window.clearTimeout(timer);
   }, [accessToken, configuration, isHydrated, savedConfigurationId, savedRevision]);
-  if (!accessToken) return <ConfigurationAuth onAuthenticated={(token) => { window.localStorage.setItem('acoustom-access-token', token); setAccessToken(token); }} onBack={onBack} />;
+  if (!neonAuth) return <ConfigurationAuth onBack={onBack} />;
+  if (!accessToken) return <ConfigurationAuth onBack={onBack} />;
   const steps = ['Brief', 'Platform', 'Bass', 'Cabinet', 'Finish', 'Personalisation', 'Review'];
   return <main className="editor-page">
     <div className="editor-top"><button className="back-link" onClick={onBack}>← Back to collection</button><span className="editor-title">CUSTOM SPEAKER / UNTITLED 01</span><button className="save-button" disabled>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : savedConfigurationId ? 'All changes saved' : 'Preparing draft…'} <span>⌘ S</span></button></div>
@@ -168,8 +172,8 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
   </main>;
 }
 
-function ConfigurationAuth({ onAuthenticated, onBack }: { onAuthenticated: (token: string) => void; onBack: () => void }) {
+function ConfigurationAuth({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [register, setRegister] = useState(true); const [error, setError] = useState<string | null>(null);
-  const submit = async () => { setError(null); try { const response = await fetch(`/api/auth/${register ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); const body = await response.json(); if (!response.ok) throw new Error(typeof body.detail === 'string' ? body.detail : 'Could not sign in'); onAuthenticated(body.accessToken); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not sign in'); } };
+  const submit = async () => { setError(null); try { if (!neonAuth) throw new Error('Neon Auth is not configured. Set VITE_NEON_AUTH_URL.'); const result = register ? await neonAuth.signUp.email({ email, password, name: email.split('@')[0] }) : await neonAuth.signIn.email({ email, password }); if (result.error) throw new Error(result.error.message); window.location.reload(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not sign in'); } };
   return <main className="editor-page"><div className="editor-top"><button className="back-link" onClick={onBack}>← Back to collection</button></div><section className="editor-panel" style={{ maxWidth: 480, margin: '5rem auto', minHeight: 0 }}><p className="eyebrow">YOUR SAVED DESIGNS</p><h1>{register ? 'Create your workspace' : 'Welcome back'}</h1><p className="panel-copy">Sign in to autosave designs and let your Acoustom agent work on the same configurations.</p><label className="control-label">Email</label><input value={email} type="email" onChange={(event) => setEmail(event.target.value)} /><label className="control-label">Password</label><input value={password} type="password" minLength={10} onChange={(event) => setPassword(event.target.value)} /><button className="simulate-button" onClick={submit}>{register ? 'Create account' : 'Sign in'} <ArrowRight size={15} /></button>{error && <p className="simulation-error">{error}</p>}<button className="text-link" onClick={() => setRegister(!register)}>{register ? 'Already have an account? Sign in' : 'New here? Create an account'}</button></section></main>;
 }
