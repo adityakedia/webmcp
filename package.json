@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "dev:all": "pnpm dlx concurrently --kill-others --names frontend,backend \"pnpm --filter @acoustom/frontend dev\" \"cd apps/backend && uv run uvicorn app.main:app --reload --port 8000\"",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{json,ts,tsx,js,jsx,css,scss,md}\"",

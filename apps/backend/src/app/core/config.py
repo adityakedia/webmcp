@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     UPLOAD_DIR: str = "/tmp/acoustom-uploads"
     SIMULATION_TIMEOUT: int = 300
+    AUTH_SECRET: str = "change-this-in-production"
+    AUTH_TOKEN_TTL_SECONDS: int = 60 * 60 * 24 * 30
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

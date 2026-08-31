@@ -1,3 +1,5 @@
+import type { AcousticPlatformId } from './customSpeaker';
+
 export interface Speaker {
   id: string;
   manufacturer: string;
@@ -35,6 +37,7 @@ export interface RoomDimensions {
   length: number;
   height: number;
   presetId?: string;
+  surfaceAbsorption?: Partial<Record<'floor' | 'ceiling' | 'north' | 'south' | 'east' | 'west', number>>;
 }
 
 export interface SpeakerPosition {
@@ -42,6 +45,7 @@ export interface SpeakerPosition {
   y: number;
   z: number;
   rotation: number;
+  directivity?: 'omni' | 'cardioid';
 }
 
 export interface ListenerPosition {
@@ -52,9 +56,16 @@ export interface ListenerPosition {
 
 export interface SimulationRequest {
   speakerId: string;
+  speakerProfile?: SimulationSpeakerProfile;
   room: RoomDimensions;
   speakers: SpeakerPosition[];
   listener: ListenerPosition;
+}
+
+export interface SimulationSpeakerProfile {
+  status: 'reference_ready' | 'component_model_ready';
+  referenceId: AcousticPlatformId;
+  modelInputs?: { alignment: 'sealed'; netVolumeLitres: number } | { alignment: 'ported'; netVolumeLitres: number; tuningHz: number };
 }
 
 export interface SimulationResult {
@@ -69,6 +80,16 @@ export interface SimulationResult {
     clarity?: number;
     definition?: number;
   };
+  frequencyResponse: Array<{ frequencyHz: number; gainDb: number }>;
+  speakerPerformance: {
+    id: string;
+    name: string;
+    modelType: 'catalog_specification_profile' | 'custom_reference_profile';
+    measurementStatus: 'specification_based' | 'measurement_backed';
+    frequencyRangeHz: [number, number];
+    sensitivityDb?: number;
+    note: string;
+  };
 }
 
 export interface AudioState {
@@ -80,3 +101,5 @@ export interface AudioState {
 }
 
 export type SimulationStatus = 'idle' | 'queued' | 'simulating' | 'ready' | 'error';
+
+export * from './customSpeaker';

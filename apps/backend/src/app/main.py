@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import router
 from app.core.config import settings
+import app.models  # noqa: F401 - register all SQLAlchemy metadata
 
 app = FastAPI(title="Acoustom API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])

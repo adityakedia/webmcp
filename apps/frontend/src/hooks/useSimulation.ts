@@ -12,6 +12,14 @@ export function useSimulation() {
       speakers: [speakerPositions.left, speakerPositions.right],
       listener: listenerPosition,
     };
+    if (selectedSpeakerId === 'custom-reference') {
+      const saved = window.sessionStorage.getItem('acoustom-custom-speaker-profile');
+      if (!saved) throw new Error('No custom speaker reference profile is available.');
+      const profile = JSON.parse(saved) as { status: string; referenceId: 'two_way_compact' | 'two_way_extended' | 'three_way_reference' | 'subwoofer_active'; modelInputs?: { alignment: 'sealed'; netVolumeLitres: number } | { alignment: 'ported'; netVolumeLitres: number; tuningHz: number } };
+      if (profile.status === 'reference_ready') config.speakerProfile = { status: 'reference_ready', referenceId: profile.referenceId };
+      else if (profile.status === 'component_model_ready' && profile.modelInputs) config.speakerProfile = { status: 'component_model_ready', referenceId: profile.referenceId, modelInputs: profile.modelInputs };
+      else throw new Error('The custom build profile is incomplete. Rebuild it before simulating.');
+    }
 
     const response = await fetch('/api/simulate', {
       method: 'POST',

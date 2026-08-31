@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 from app.db.session import engine, Base
+import app.models  # noqa: F401 - register every table before create_all
 from app.models.speaker import Speaker
 
 async def seed():

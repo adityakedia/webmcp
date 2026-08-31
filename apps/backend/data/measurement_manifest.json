@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "path": "driver_measurements/seas_ca18rnx_h1215.frd",
+      "sourceUrl": "https://rjbaudio.com/Audiofiles/Driver%20FRD%20files.html",
+      "sha256": "a552126d62f216377492ef7c7140ff4d7d19186ebb8046fa25622777c0f59074"
+    },
+    {
+      "path": "driver_measurements/seas_ca18rnx_h1215.zma",
+      "sourceUrl": "https://rjbaudio.com/Audiofiles/Driver%20FRD%20files.html",
+      "sha256": "aeda34e8bbc2979f7dd63262065ee73282063a508d0360f516236a549b805e7f"
+    },
+    {
+      "path": "driver_measurements/seas_27tdfc_h1189.frd",
+      "sourceUrl": "https://rjbaudio.com/Audiofiles/Driver%20FRD%20files.html",
+      "sha256": "8b172872e7ae5d8b5f147041e3843f1ed8f9f41ca2fe05b21f446df1d6beeda8"
+    },
+    {
+      "path": "driver_measurements/seas_27tdfc_h1189.zma",
+      "sourceUrl": "https://rjbaudio.com/Audiofiles/Driver%20FRD%20files.html",
+      "sha256": "6c17716280cde81a55d6cd1b3bd438f3597feee54c4115c26e841a5a727c8437"
+    },
+    {
+      "path": "reference_designs/seas_403/ALL_SPL.txt",
+      "sourceUrl": "https://solen.ca/en/products/seas-prestige-403-revisited-3way-loudspeaker-kit",
+      "sha256": "9daed0c78285d2e7d302515a15b12fa83bd037c0ca1c783b1d00c2c18fe40c0f"
+    },
+    {
+      "path": "reference_designs/aphel/xo_data/Wspl_00.txt",
+      "sourceUrl": "https://www.seas.no/images/stories/diykits/aphel/DIY_kit_SEAS_Aphel.zip",
+      "sha256": "a27f6657cb0ddb6665005d92122de0a726f27db2348616a827b4dcc4fe78bc12"
+    },
+    {
+      "path": "reference_designs/aphel/xo_data/Tspl_00.txt",
+      "sourceUrl": "https://www.seas.no/images/stories/diykits/aphel/DIY_kit_SEAS_Aphel.zip",
+      "sha256": "b65fbb80a5ad8455b458c84b10586437e0e74c8db8718f87254378e383f4e29b"
+    },
+    {
+      "path": "component_datasheets/seas_ca18rnx_h1215_datasheet.pdf",
+      "sourceUrl": "https://www.seas.no/images/stories/prestige/pdfdatasheet/H1215_CA18RNX_Datasheet.pdf",
+      "sha256": "0f7db0d469a2bd7b50e6b85d799e189a872d653d4279c7ffd6316991032d3b3e"
+    },
+    {
+      "path": "component_datasheets/seas_27tdfc_h1189_datasheet.pdf",
+      "sourceUrl": "https://www.seas.no/images/stories/prestige/pdfdatasheet/h1189_27tdfc_datasheet.pdf",
+      "sha256": "c80181e8e27ccca28163bc9908f599c73463ed9ac945256e010207c853e7c280"
+    },
+    {
+      "path": "component_datasheets/dayton_dcs165_4_datasheet.pdf",
+      "sourceUrl": "https://www.brl.fi/bilder/artiklar/pdf/860DCS1654.pdf",
+      "sha256": "a339050c6a45c2caa58d75274e46dfd695907e261ad5defc6acc9cbd4be68168"
+    }
+  ]
+}
