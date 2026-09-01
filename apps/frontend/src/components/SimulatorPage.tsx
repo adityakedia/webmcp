@@ -4,6 +4,7 @@ import AudioPlayer from './AudioPlayer';
 import { useAutoSimulation } from '../hooks/useAutoSimulation';
 import { useSimulationStore } from '../store/simulation';
 import SimulationInsights from './SimulationInsights';
+import RoomReferenceInput from './RoomReferenceInput';
 
 type Props = { products: Product[]; onBack: () => void };
 
@@ -48,6 +49,7 @@ export default function SimulatorPage({ products, onBack }: Props) {
         <div className="preset-grid">{presets.map((preset) => <button key={preset.id} onClick={() => setRoomDimensions({ presetId: preset.id })} className={room.presetId === preset.id ? 'selected' : ''}><b>{preset.name}</b><span>{preset.copy}</span></button>)}</div>
         <label className="control-label simulator-label">Room dimensions</label>
         <div className="dimension-grid">{(['width', 'length', 'height'] as const).map((key) => <label key={key}>{key}<div><input type="number" min={key === 'height' ? 2 : 2} max={key === 'height' ? 10 : 20} step="0.1" value={room[key]} onChange={(event) => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value)) setRoomDimensions({ [key]: value }); }} /><span>m</span></div></label>)}</div>
+        <RoomReferenceInput />
         <button className="simulate-button" onClick={retry}>Refresh room response <span>→</span></button>
       </div>
       <div className="simulator-listening"><div className={`room-visual ${room.presetId}`}><div className="room-wall" /><div className="speaker-marker left">L</div><div className="listener-marker">LISTEN</div><div className="speaker-marker right">R</div><div className="room-meta">{room.width}m × {room.length}m × {room.height}m<br />{presets.find((preset) => preset.id === room.presetId)?.name}</div></div><div className="listen-card"><p className="eyebrow">A/B listening</p><h2>Bring your own track</h2><p>Your audio remains in this browser. Once the response is ready, switch between the original and your simulated room.</p><AudioPlayer /></div></div>
