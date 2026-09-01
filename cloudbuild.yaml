@@ -1,11 +1,14 @@
 steps:
-  - name: gcr.io/cloud-builders/docker
+  # Build the FastAPI service with Google Cloud Buildpacks (no Dockerfile).
+  - name: gcr.io/k8s-skaffold/pack
+    entrypoint: pack
     args:
       - build
-      - -f
-      - infra/Dockerfile.backend
-      - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA
+      - --path
       - apps/backend
+      - --builder
+      - gcr.io/buildpacks/builder:latest
+      - --publish
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA

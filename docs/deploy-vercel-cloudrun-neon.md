@@ -9,8 +9,10 @@ Postgres URLs to SQLAlchemy's async driver automatically.
 ## 2. Cloud Run API
 
 Enable Artifact Registry, Cloud Build, and Cloud Run in a Google Cloud project.
-Create an Artifact Registry Docker repository named `acoustom`, then run from
-the repository root:
+Create an Artifact Registry repository named `acoustom`, then run from the
+repository root. The checked-in Cloud Build configuration uses Google
+Buildpacks against `apps/backend` and the `Procfile` entrypoint; no Dockerfile
+is required:
 
 ```bash
 gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=us-central1
