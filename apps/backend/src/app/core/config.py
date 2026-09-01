@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     NEON_AUTH_JWKS_URL: str | None = None
     NEON_AUTH_ISSUER: str | None = None
     NEON_AUTH_AUDIENCE: str | None = None
+    SIMULATION_AUDIO_TTL_SECONDS: int = 60 * 60
+    SIMULATION_AUDIO_MAX_BYTES: int = 50 * 1024 * 1024
+    NEON_OBJECT_STORAGE_ENDPOINT: str | None = None
+    NEON_OBJECT_STORAGE_BUCKET: str | None = None
+    NEON_OBJECT_STORAGE_ACCESS_KEY_ID: str | None = None
+    NEON_OBJECT_STORAGE_SECRET_ACCESS_KEY: str | None = None
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

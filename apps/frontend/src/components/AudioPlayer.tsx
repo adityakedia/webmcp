@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSimulationStore } from '../store/simulation';
 import { apiUrl } from '../lib/api';
+import { renderSimulatedWav, shareSimulatedWav } from '../lib/simulatedAudio';
 
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 
@@ -12,6 +13,7 @@ export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [mode, setMode] = useState<'original' | 'simulated'>('original');
   const [simulatedLevel, setSimulatedLevel] = useState(4);
+  const [isExporting, setIsExporting] = useState(false);
   const contextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
@@ -77,6 +79,13 @@ export default function AudioPlayer() {
     setIsPlaying(true);
     source.start();
   }
+  async function exportSimulatedAudio(share = false) {
+    if (!audioFile || !simulationResult) return;
+    setIsExporting(true); setFileError(null);
+    try { const wav = await renderSimulatedWav(audioFile, simulationResult, simulatedLevel); if (share) { const asset = await shareSimulatedWav(wav, simulationResult.simulationId); setFileError(`Shared with agent until ${new Date(asset.expiresAt).toLocaleTimeString()}.`); } else { const url = URL.createObjectURL(wav); const link = document.createElement('a'); link.href = url; link.download = `acoustom-${simulationResult.simulationId}.wav`; link.click(); URL.revokeObjectURL(url); } }
+    catch (error) { setFileError(error instanceof Error ? error.message : 'Could not render simulated audio.'); }
+    finally { setIsExporting(false); }
+  }
 
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
@@ -102,6 +111,8 @@ export default function AudioPlayer() {
         <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-700">
           <button disabled={!audioFile || isPlaying || isPreparing} onClick={() => void play('original').catch((error) => setFileError(error instanceof Error ? error.message : 'Playback failed.'))} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Play original</button>
           <button disabled={!audioFile || !simulationResult || isPlaying || isPreparing} onClick={() => void play('simulated').catch((error) => setFileError(error instanceof Error ? error.message : 'Playback failed.'))} className="rounded-lg bg-blue-600 px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-50">Play in room</button>
+          <button disabled={!audioFile || !simulationResult || isExporting} onClick={() => void exportSimulatedAudio()} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">{isExporting ? 'Rendering…' : 'Download simulated WAV'}</button>
+          <button disabled={!audioFile || !simulationResult || isExporting} onClick={() => void exportSimulatedAudio(true)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Share with agent</button>
           <button disabled={!isPlaying} onClick={stop} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Stop</button>
           <span className="text-sm text-slate-400">{isPlaying ? `Playing ${mode}` : simulationResult ? 'Ready for instant A/B playback' : 'Room response is updating'}</span>
         </div>
