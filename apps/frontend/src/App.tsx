@@ -3,7 +3,8 @@ import { ArrowRight, ChevronDown, Heart, Menu, Search, ShoppingBag, X } from 'lu
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebMcp, type CartItem } from './hooks/useWebMcp';
 import { apiUrl } from './lib/api';
-import { getNeonJwt, neonAuth } from './lib/neonAuth';
+import { getNeonJwt } from './lib/neonAuth';
+import { createLocalBuild, readLocalBuilds, writeLocalBuilds, type LocalBuild } from './lib/localBuilds';
 import ProceduralSpeaker from './components/ProceduralSpeaker';
 import SimulatorPage from './components/SimulatorPage';
 import SimulationWorkspace from './components/SimulationWorkspace';
@@ -52,14 +53,11 @@ export default function App() {
 function ProductDetail({ product, onBack }: { product: Product; onBack: () => void }) { return <main className="detail-page"><button className="back-link" onClick={onBack}>← Back to collection</button><div className="detail-grid"><div className="detail-image"><img src={product.image} alt={product.name} /></div><div className="detail-copy"><p className="eyebrow">{product.tone} / {product.category}</p><h1>{product.name}</h1><p className="detail-type">{product.type}</p><p className="detail-price">{product.price} <span>per pair</span></p><p className="detail-description">{product.description}</p><button className="button dark">Add to bag <ArrowRight size={16} /></button><p className="detail-note">Complimentary delivery · 30-day listening trial</p></div></div><section className="detail-intro"><p className="eyebrow">The listening experience</p><h2>Everything you need.<br /><em>Nothing you don't.</em></h2><p>{product.name} is tuned for a natural, uncoloured presentation. Its controlled bass, open midrange, and effortless high frequencies let you hear the intent behind every recording.</p></section><section className="detail-panels"><div className="detail-panel"><p className="eyebrow">Engineering</p><h3>Built around the music</h3><p>Every cabinet, driver, and crossover decision is made to keep the signal clean and the timing coherent. This is the kind of detail you notice in the first bar—and appreciate for years.</p><a className="text-link" href="#specifications">See specifications <ArrowRight size={15} /></a></div><div className="detail-panel dark-panel"><p className="eyebrow">Room placement</p><h3>Give it room to breathe</h3><p>Start with the speakers slightly angled toward your listening position, then adjust by ear. We recommend a little space from the rear wall for the most open presentation.</p><button className="text-link">Open room guide <ArrowRight size={15} /></button></div></section><section className="specifications" id="specifications"><div className="spec-heading"><p className="eyebrow">Technical details</p><h2>Specifications</h2><p>Reference values for the {product.name}. These fields are structured to connect with the room simulator later.</p></div><div className="spec-table">{product.specs.map(([label, value]) => <div className="spec-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section><section className="detail-bottom"><p className="eyebrow">Find your fit</p><h2>Ready to hear<br /><em>the difference?</em></h2><button className="button dark" onClick={onBack}>Explore the collection <ArrowRight size={16} /></button></section></main>; }
 
 function CustomDesign({ onBack, products }: { onBack: () => void; products: Product[] }) {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [savedConfigurationId, setSavedConfigurationId] = useState<string | null>(() => window.localStorage.getItem('acoustom-active-configuration-id'));
-  const [savedRevision, setSavedRevision] = useState<number | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
-  const [isHydrated, setIsHydrated] = useState(() => !window.localStorage.getItem('acoustom-active-configuration-id'));
-  const lastSavedPayload = useRef<string | null>(null);
+  const [localBuilds, setLocalBuilds] = useState<LocalBuild[]>(() => readLocalBuilds()?.builds ?? []);
+  const [activeBuildId, setActiveBuildId] = useState<string | null>(() => readLocalBuilds()?.activeBuildId ?? null);
+  const [localHydrated, setLocalHydrated] = useState(false);
+  const [buildName, setBuildName] = useState('Untitled 01');
   const [finish, setFinish] = useState('Natural walnut'); const [shape, setShape] = useState('Standmount');
-  useEffect(() => { void getNeonJwt().then(setAccessToken); }, []);
   const [activeStep, setActiveStep] = useState(0); const [platformId, setPlatformId] = useState<AcousticPlatformId>('two_way_compact'); const [soundProfile, setSoundProfile] = useState<SoundProfile>('balanced'); const [roomSize, setRoomSize] = useState<'small' | 'medium' | 'large'>('medium'); const [listeningDistanceM, setListeningDistanceM] = useState(2.5);
   const [enclosure, setEnclosure] = useState<'ported' | 'sealed'>('ported'); const [bassCharacter, setBassCharacter] = useState<'tight' | 'balanced' | 'extended'>('balanced'); const [tuning, setTuning] = useState(42); const [netVolumeLitres, setNetVolumeLitres] = useState(14); const [portInnerDiameterMm, setPortInnerDiameterMm] = useState(50); const [portLengthMm, setPortLengthMm] = useState(200); const [dampingDescription, setDampingDescription] = useState('150 g Acousto-Q, distributed away from the port');
   const [cabinetSize, setCabinetSize] = useState<'compact' | 'standard' | 'large'>('standard'); const [grille, setGrille] = useState<'none' | 'magnetic_fabric' | 'perforated_metal'>('magnetic_fabric'); const [base, setBase] = useState<'plinth' | 'slim_feet' | 'stand'>('stand'); const [edgeProfile, setEdgeProfile] = useState<'soft_radius' | 'sculpted_radius'>('soft_radius');
@@ -85,12 +83,12 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
   }, []);
   const finishId = ({ 'Natural walnut': 'walnut', 'Black ash': 'black_ash', 'Satin white': 'satin_white' } satisfies Record<string, CabinetFinishId>)[finish] ?? 'walnut';
   const configuration = useMemo<CustomSpeakerConfiguration>(() => ({
-      version: 1, name: 'Untitled 01',
+      version: 1, name: buildName,
       brief: { format, soundProfile, roomSize, listeningDistanceM },
       platformId, bass: { alignment: enclosure, bassCharacter, netVolumeLitres, ...(enclosure === 'ported' ? { tuningHz: tuning, portInnerDiameterMm, portLengthMm, dampingDescription } : {}) },
       cabinet: { size: cabinetSize, finish: finishId, finishFamily: finishId === 'walnut' || finishId === 'black_ash' ? 'veneer' : 'paint', grille, base: format === 'standmount' ? base : base === 'stand' ? 'slim_feet' : base, edgeProfile },
       personalisation: personalisationKind === 'engraving' ? { kind: 'engraving', engraving: { text: engravingText, font: 'modern_sans', placement: 'rear_badge' } } : personalisationKind === 'none' ? { kind: 'none' } : { kind: personalisationKind, artwork: { application: 'side_panel', treatment: 'matte_decal', rightsConfirmed: artworkRightsConfirmed, status: 'pending_upload' } },
-  }), [artworkRightsConfirmed, base, bassCharacter, cabinetSize, dampingDescription, edgeProfile, enclosure, engravingText, finishId, format, grille, listeningDistanceM, netVolumeLitres, personalisationKind, platformId, portInnerDiameterMm, portLengthMm, roomSize, soundProfile, tuning]);
+  }), [artworkRightsConfirmed, base, bassCharacter, buildName, cabinetSize, dampingDescription, edgeProfile, enclosure, engravingText, finishId, format, grille, listeningDistanceM, netVolumeLitres, personalisationKind, platformId, portInnerDiameterMm, portLengthMm, roomSize, soundProfile, tuning]);
   const createBuild = async () => {
     setIsSubmitting(true); setSubmitError(null);
     try {
@@ -100,57 +98,53 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
         const detail = body?.detail;
         throw new Error(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : `Build validation failed (${response.status}).`);
       }
-      const nextBuild = await response.json() as CustomSpeakerBuild; setBuild(nextBuild); window.sessionStorage.setItem('acoustom-custom-speaker-profile', JSON.stringify(nextBuild.derived.simulationProfile));
+      const nextBuild = await response.json() as CustomSpeakerBuild;
+      setBuild(nextBuild);
+      window.sessionStorage.setItem('acoustom-custom-speaker-profile', JSON.stringify(nextBuild.derived.simulationProfile));
+      setLocalBuilds((items) => items.map((item) => item.id === activeBuildId ? { ...item, simulationProfile: nextBuild.derived.simulationProfile, updatedAt: new Date().toISOString() } : item));
     } catch (error) { setSubmitError(error instanceof Error ? error.message : 'The build could not be submitted.'); }
     finally { setIsSubmitting(false); }
   };
-  // Restore the active draft before autosave starts. This makes a saved design
-  // re-openable after a reload instead of replacing it with the defaults.
+  const applyConfiguration = (config: CustomSpeakerConfiguration) => {
+    setBuildName(config.name);
+    setPlatformId(config.platformId); setShape(config.brief.format === 'floorstanding' ? 'Floorstanding' : 'Standmount'); setSoundProfile(config.brief.soundProfile); setRoomSize(config.brief.roomSize); setListeningDistanceM(config.brief.listeningDistanceM);
+    setEnclosure(config.bass.alignment); setBassCharacter(config.bass.bassCharacter); setTuning(config.bass.tuningHz ?? 42); setNetVolumeLitres(config.bass.netVolumeLitres ?? 14); setPortInnerDiameterMm(config.bass.portInnerDiameterMm ?? 50); setPortLengthMm(config.bass.portLengthMm ?? 200); setDampingDescription(config.bass.dampingDescription ?? '');
+    setCabinetSize(config.cabinet.size); setGrille(config.cabinet.grille); setBase(config.cabinet.base); setEdgeProfile(config.cabinet.edgeProfile); setFinish(({ walnut: 'Natural walnut', black_ash: 'Black ash', satin_white: 'Satin white' } as Record<string, string>)[config.cabinet.finish] ?? 'Natural walnut'); setPersonalisationKind(config.personalisation.kind); setEngravingText(config.personalisation.engraving?.text ?? ''); setArtworkRightsConfirmed(config.personalisation.artwork?.rightsConfirmed ?? false);
+  };
   useEffect(() => {
-    if (!accessToken || !savedConfigurationId || isHydrated) return;
-    void (async () => {
-      try {
-        const response = await fetch(apiUrl(`/api/configurations/${savedConfigurationId}`), { headers: { Authorization: `Bearer ${accessToken}` } });
-        if (!response.ok) throw new Error('Configuration unavailable');
-        const saved = await response.json() as { revision: number; configuration: CustomSpeakerConfiguration };
-        const config = saved.configuration;
-        setPlatformId(config.platformId); setShape(config.brief.format === 'floorstanding' ? 'Floorstanding' : 'Standmount'); setSoundProfile(config.brief.soundProfile); setRoomSize(config.brief.roomSize); setListeningDistanceM(config.brief.listeningDistanceM);
-        setEnclosure(config.bass.alignment); setBassCharacter(config.bass.bassCharacter); setTuning(config.bass.tuningHz ?? 42); setNetVolumeLitres(config.bass.netVolumeLitres ?? 14); setPortInnerDiameterMm(config.bass.portInnerDiameterMm ?? 50); setPortLengthMm(config.bass.portLengthMm ?? 200); setDampingDescription(config.bass.dampingDescription ?? '');
-        setCabinetSize(config.cabinet.size); setGrille(config.cabinet.grille); setBase(config.cabinet.base); setEdgeProfile(config.cabinet.edgeProfile); setFinish(({ walnut: 'Natural walnut', black_ash: 'Black ash', satin_white: 'Satin white' } as Record<string, string>)[config.cabinet.finish] ?? 'Natural walnut'); setPersonalisationKind(config.personalisation.kind); setEngravingText(config.personalisation.engraving?.text ?? ''); setArtworkRightsConfirmed(config.personalisation.artwork?.rightsConfirmed ?? false);
-        setSavedRevision(saved.revision); lastSavedPayload.current = JSON.stringify({ ...config, id: undefined });
-      } catch {
-        setSavedConfigurationId(null); window.localStorage.removeItem('acoustom-active-configuration-id');
-      } finally { setIsHydrated(true); }
-    })();
-  }, [accessToken, savedConfigurationId, isHydrated]);
-  // Debounced autosave creates the first draft, then appends a revision for
-  // every later change. The same endpoints are exposed to the MCP agent.
+    if (localHydrated) return;
+    const stored = readLocalBuilds();
+    if (stored) {
+      const active = stored.builds.find((item) => item.id === stored.activeBuildId) ?? stored.builds[0];
+      setLocalBuilds(stored.builds); setActiveBuildId(active.id); applyConfiguration(active.configuration);
+      if (active.simulationProfile) window.sessionStorage.setItem('acoustom-custom-speaker-profile', JSON.stringify(active.simulationProfile));
+    } else {
+      const first = createLocalBuild(configuration);
+      setLocalBuilds([first]); setActiveBuildId(first.id);
+    }
+    setLocalHydrated(true);
+  // The initial configuration is deliberately used only to seed an empty library.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHydrated]);
   useEffect(() => {
-    if (!accessToken || !isHydrated) return;
-    const payload = JSON.stringify(configuration);
-    if (payload === lastSavedPayload.current) return;
-    const timer = window.setTimeout(async () => {
-      setSaveStatus('saving');
-      try {
-        const response = await fetch(apiUrl(savedConfigurationId ? `/api/configurations/${savedConfigurationId}` : '/api/configurations/'), {
-          method: savedConfigurationId ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ configuration, expectedRevision: savedRevision, actor: 'user' }),
-        });
-        if (!response.ok) throw new Error(`Autosave failed (${response.status})`);
-        const saved = await response.json() as { id: string; revision: number };
-        lastSavedPayload.current = payload;
-        setSavedConfigurationId(saved.id); setSavedRevision(saved.revision); setSaveStatus('saved');
-        window.localStorage.setItem('acoustom-active-configuration-id', saved.id);
-      } catch { setSaveStatus('error'); }
-    }, 800);
+    if (!localHydrated || !activeBuildId) return;
+    const timer = window.setTimeout(() => setLocalBuilds((items) => items.map((item) => item.id === activeBuildId ? { ...item, name: configuration.name, configuration, updatedAt: new Date().toISOString() } : item)), 350);
     return () => window.clearTimeout(timer);
-  }, [accessToken, configuration, isHydrated, savedConfigurationId, savedRevision]);
-  if (!neonAuth) return <ConfigurationAuth onBack={onBack} />;
-  if (!accessToken) return <ConfigurationAuth onBack={onBack} />;
+  }, [activeBuildId, configuration, localHydrated]);
+  useEffect(() => { if (localHydrated && activeBuildId) writeLocalBuilds({ builds: localBuilds, activeBuildId }); }, [activeBuildId, localBuilds, localHydrated]);
+  const selectLocalBuild = (id: string) => {
+    const item = localBuilds.find((candidate) => candidate.id === id);
+    if (!item) return;
+    setActiveBuildId(id); applyConfiguration(item.configuration); setBuild(null); setSubmitError(null);
+    if (item.simulationProfile) window.sessionStorage.setItem('acoustom-custom-speaker-profile', JSON.stringify(item.simulationProfile));
+    else window.sessionStorage.removeItem('acoustom-custom-speaker-profile');
+  };
+  const newLocalBuild = () => { const item = createLocalBuild({ ...configuration, name: `Untitled ${localBuilds.length + 1}` }); setLocalBuilds((items) => [...items, item]); setActiveBuildId(item.id); setBuildName(item.name); setBuild(null); };
+  const duplicateLocalBuild = () => { const current = localBuilds.find((item) => item.id === activeBuildId); if (!current) return; const item = createLocalBuild(current.configuration, `${current.name} copy`); item.simulationProfile = current.simulationProfile; setLocalBuilds((items) => [...items, item]); setActiveBuildId(item.id); setBuildName(item.name); };
+  const deleteLocalBuild = () => { if (localBuilds.length <= 1 || !activeBuildId) return; const remaining = localBuilds.filter((item) => item.id !== activeBuildId); setLocalBuilds(remaining); selectLocalBuild(remaining[0].id); };
   const steps = ['Brief', 'Platform', 'Bass', 'Cabinet', 'Finish', 'Personalisation', 'Review'];
   return <main className="editor-page">
-    <div className="editor-top"><button className="back-link" onClick={onBack}>← Back to collection</button><span className="editor-title">CUSTOM SPEAKER / UNTITLED 01</span><button className="save-button" disabled>{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : savedConfigurationId ? 'All changes saved' : 'Preparing draft…'} <span>⌘ S</span></button></div>
+    <div className="editor-top"><button className="back-link" onClick={onBack}>← Back to collection</button><span className="editor-title">CUSTOM SPEAKER / <input aria-label="Build name" value={buildName} onChange={(event) => setBuildName(event.target.value)} /></span><div className="build-library"><select aria-label="Choose saved local build" value={activeBuildId ?? ''} onChange={(event) => selectLocalBuild(event.target.value)}>{localBuilds.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button onClick={newLocalBuild}>New</button><button onClick={duplicateLocalBuild}>Duplicate</button><button onClick={deleteLocalBuild} disabled={localBuilds.length <= 1}>Delete</button></div></div>
     <div className="step-tabs">{steps.map((step, i) => <button key={step} className={activeStep === i ? 'active' : activeStep > i ? 'done' : ''} onClick={() => setActiveStep(i)}><b>{String(i + 1).padStart(2, '0')}</b>{step}</button>)}</div>
     <section className="editor-workspace">
       <div className="editor-stage"><ProceduralSpeaker config={configuration} /><div className="stage-meta"><span>LIVE PREVIEW / {format.toUpperCase()}</span><span>DRAG TO ROTATE · SCROLL TO ZOOM</span></div><div className="stage-grid" /></div>
@@ -171,10 +165,4 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
       </aside>
     </section>
   </main>;
-}
-
-function ConfigurationAuth({ onBack }: { onBack: () => void }) {
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [register, setRegister] = useState(true); const [error, setError] = useState<string | null>(null);
-  const submit = async () => { setError(null); try { if (!neonAuth) throw new Error('Neon Auth is not configured. Set VITE_NEON_AUTH_URL.'); const result = register ? await neonAuth.signUp.email({ email, password, name: email.split('@')[0] }) : await neonAuth.signIn.email({ email, password }); if (result.error) throw new Error(result.error.message); window.location.reload(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not sign in'); } };
-  return <main className="editor-page"><div className="editor-top"><button className="back-link" onClick={onBack}>← Back to collection</button></div><section className="editor-panel" style={{ maxWidth: 480, margin: '5rem auto', minHeight: 0 }}><p className="eyebrow">YOUR SAVED DESIGNS</p><h1>{register ? 'Create your workspace' : 'Welcome back'}</h1><p className="panel-copy">Sign in to autosave designs and let your Acoustom agent work on the same configurations.</p><label className="control-label">Email</label><input value={email} type="email" onChange={(event) => setEmail(event.target.value)} /><label className="control-label">Password</label><input value={password} type="password" minLength={10} onChange={(event) => setPassword(event.target.value)} /><button className="simulate-button" onClick={submit}>{register ? 'Create account' : 'Sign in'} <ArrowRight size={15} /></button>{error && <p className="simulation-error">{error}</p>}<button className="text-link" onClick={() => setRegister(!register)}>{register ? 'Already have an account? Sign in' : 'New here? Create an account'}</button></section></main>;
 }
