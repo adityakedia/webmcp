@@ -2,5 +2,11 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @acoustom/frontend build",
   "outputDirectory": "apps/frontend/dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [{ "key": "Origin-Agent-Cluster", "value": "?1" }]
+    }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

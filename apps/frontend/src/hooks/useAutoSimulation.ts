@@ -34,5 +34,5 @@ export function useAutoSimulation() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [selectedSpeakerId, roomDimensions, speakerPositions, listenerPosition, simulationRequestVersion]);
+  }, [listenerPosition, roomDimensions, runSimulation, selectedSpeakerId, setSimulationState, simulationRequestVersion, speakerPositions]);
 }

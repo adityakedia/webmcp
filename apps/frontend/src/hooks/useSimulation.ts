@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useSimulationStore } from '../store/simulation';
 import type { SimulationRequest, SimulationResult } from '@acoustom/types';
 import { apiUrl } from '../lib/api';
@@ -5,7 +6,7 @@ import { apiUrl } from '../lib/api';
 export function useSimulation() {
   const { selectedSpeakerId, roomDimensions, speakerPositions, listenerPosition } = useSimulationStore();
 
-  async function runSimulation(signal?: AbortSignal): Promise<SimulationResult> {
+  const runSimulation = useCallback(async (signal?: AbortSignal): Promise<SimulationResult> => {
     if (!selectedSpeakerId) throw new Error('Select a speaker before simulating.');
     const config: SimulationRequest = {
       speakerId: selectedSpeakerId,
@@ -36,7 +37,7 @@ export function useSimulation() {
       throw new Error(message);
     }
     return response.json() as Promise<SimulationResult>;
-  }
+  }, [listenerPosition, roomDimensions, selectedSpeakerId, speakerPositions]);
 
   return { runSimulation };
 }

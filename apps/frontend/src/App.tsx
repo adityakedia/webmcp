@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { ArrowRight, ChevronDown, Heart, Menu, Search, ShoppingBag, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebMcp, type CartItem } from './hooks/useWebMcp';
@@ -17,7 +17,8 @@ export default function App() {
   const location = useLocation();
   const [products, setProducts] = useState<Product[]>([]);
   const [menuOpen, setMenuOpen] = useState(false); const [detail, setDetail] = useState<Product | null>(null); const [customOpen, setCustomOpen] = useState(false); const [liked, setLiked] = useState<string[]>([]); const [cart, setCart] = useState<CartItem[]>(() => { try { const saved = window.localStorage.getItem('acoustom-cart'); return saved ? JSON.parse(saved) as CartItem[] : []; } catch { return []; } });
-  const cartRef = useRef(cart); const likedRef = useRef(liked); cartRef.current = cart; likedRef.current = liked;
+  const cartRef = useRef(cart); const likedRef = useRef(liked);
+  useEffect(() => { cartRef.current = cart; likedRef.current = liked; }, [cart, liked]);
   const pathProduct = products.find((product) => `/speakers/${product.name.toLowerCase().replace(/\s+/g, '-')}` === location.pathname);
   const activeDetail = detail ?? pathProduct ?? null;
   const simulatorOpen = location.pathname === '/simulator';
@@ -83,13 +84,13 @@ function CustomDesign({ onBack, products }: { onBack: () => void; products: Prod
     void loadCatalog().catch(() => undefined);
   }, []);
   const finishId = ({ 'Natural walnut': 'walnut', 'Black ash': 'black_ash', 'Satin white': 'satin_white' } satisfies Record<string, CabinetFinishId>)[finish] ?? 'walnut';
-  const configuration: CustomSpeakerConfiguration = {
+  const configuration = useMemo<CustomSpeakerConfiguration>(() => ({
       version: 1, name: 'Untitled 01',
       brief: { format, soundProfile, roomSize, listeningDistanceM },
       platformId, bass: { alignment: enclosure, bassCharacter, netVolumeLitres, ...(enclosure === 'ported' ? { tuningHz: tuning, portInnerDiameterMm, portLengthMm, dampingDescription } : {}) },
       cabinet: { size: cabinetSize, finish: finishId, finishFamily: finishId === 'walnut' || finishId === 'black_ash' ? 'veneer' : 'paint', grille, base: format === 'standmount' ? base : base === 'stand' ? 'slim_feet' : base, edgeProfile },
       personalisation: personalisationKind === 'engraving' ? { kind: 'engraving', engraving: { text: engravingText, font: 'modern_sans', placement: 'rear_badge' } } : personalisationKind === 'none' ? { kind: 'none' } : { kind: personalisationKind, artwork: { application: 'side_panel', treatment: 'matte_decal', rightsConfirmed: artworkRightsConfirmed, status: 'pending_upload' } },
-  };
+  }), [artworkRightsConfirmed, base, bassCharacter, cabinetSize, dampingDescription, edgeProfile, enclosure, engravingText, finishId, format, grille, listeningDistanceM, netVolumeLitres, personalisationKind, platformId, portInnerDiameterMm, portLengthMm, roomSize, soundProfile, tuning]);
   const createBuild = async () => {
     setIsSubmitting(true); setSubmitError(null);
     try {
