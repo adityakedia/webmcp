@@ -131,6 +131,17 @@ async def update_configuration(
     return serialize(record)
 
 
+@router.delete("/{configuration_id}", status_code=204)
+async def delete_configuration(
+    configuration_id: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    record = await owned(configuration_id, user, db)
+    await db.delete(record)
+    await db.commit()
+
+
 @router.get("/{configuration_id}/revisions")
 async def revisions(
     configuration_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
