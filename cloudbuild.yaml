@@ -12,3 +12,5 @@ steps:
       - --publish
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA
+options:
+  logging: CLOUD_LOGGING_ONLY
