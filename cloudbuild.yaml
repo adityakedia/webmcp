@@ -13,7 +13,7 @@ steps:
       - --publish
 
 images:
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/awebmcp/acoustom-api:$COMMIT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/webmcp/acoustom-api:$COMMIT_SHA"
 
 substitutions:
   _REGION: asia-east1
