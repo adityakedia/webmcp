@@ -1,16 +1,22 @@
 steps:
-  # Build the FastAPI service with Google Cloud Buildpacks (no Dockerfile).
   - name: gcr.io/k8s-skaffold/pack
     entrypoint: pack
     args:
       - build
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA"
       - --path
       - apps/backend
       - --builder
       - gcr.io/buildpacks/builder:latest
+      - --network
+      - cloudbuild
       - --publish
+
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/acoustom/acoustom-api:$COMMIT_SHA"
+
+substitutions:
+  _REGION: asia-east1
+
 options:
   logging: CLOUD_LOGGING_ONLY
