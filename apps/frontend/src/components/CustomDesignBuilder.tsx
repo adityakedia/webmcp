@@ -329,12 +329,15 @@ function Card({
 }
 
 export default function CustomDesignBuilder({ products, onBack }: Props) {
-  const [step, setStep] = useState(0);
-  const [touched, setTouched] = useState<Category[]>([]);
+  const ALL_CATEGORIES: Category[] = ["format", "platform", "bass", "cabinet", "finish", "personalisation"];
   const stored = readLocalBuilds();
   const initialBuild =
     stored?.builds.find((build) => build.id === stored.activeBuildId) ??
     stored?.builds[0];
+  const [step, setStep] = useState(0);
+  const [touched, setTouched] = useState<Category[]>(
+    initialBuild ? ALL_CATEGORIES : [],
+  );
   const [builds, setBuilds] = useState<LocalBuild[]>(stored?.builds ?? []);
   const [activeBuildId, setActiveBuildId] = useState(initialBuild?.id ?? "");
   const [buildName, setBuildName] = useState(
@@ -505,8 +508,8 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       finish: build.configuration.cabinet.finish,
       personalisation: build.configuration.personalisation.kind,
     });
-    setTouched([]);
-    setStep(0);
+    setTouched(ALL_CATEGORIES);
+    setStep(7);
   };
   const newBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {
@@ -550,8 +553,8 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     setBuilds(next?.builds ?? []);
     setActiveBuildId(replacement?.id ?? "");
     setBuildName(replacement?.name ?? "Untitled 01");
-    setTouched([]);
-    setStep(0);
+    setTouched(replacement ? ALL_CATEGORIES : []);
+    setStep(replacement ? 7 : 0);
   };
   const selected = [
     {
