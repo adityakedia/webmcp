@@ -116,6 +116,19 @@ SIMULATION_TIMEOUT=300
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
+## WebMCP collaboration tools
+
+When the browser provides WebMCP, Acoustom registers its catalog, simulation, custom-build, saved-design, bag, and navigation tools from `apps/frontend/src/hooks/useWebMcp.ts`. The app remains fully usable in browsers where WebMCP is unavailable.
+
+Agents should call `get_acoustom_workflow` for the current workflow guidance and `get_webmcp_tool_contract` when they need an individual tool schema. For user-visible collaboration, the navigation tools are:
+
+| Tool | Use |
+|------|-----|
+| `get_navigation_context` | Inspect the current visible page, selected product, focusable sections, and supported destinations. |
+| `navigate_acoustom` | Show an in-app product, collection, comparison, listening lab, or custom design when that helps the user review or edit work. |
+
+`navigate_acoustom` accepts only explicit in-app destinations; it cannot open arbitrary URLs. It is a reversible presentation action, not user confirmation. There is deliberately no checkout, payment, or purchase destination or tool: an agent may manage the browser-local bag, but must leave any future ordering step for direct user review and action.
+
 ## API Endpoints
 
 | Method | Path | Description |

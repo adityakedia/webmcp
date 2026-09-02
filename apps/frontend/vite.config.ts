@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const webMcpOriginTrialToken = loadEnv(mode, process.cwd(), '').VITE_WEBMCP_ORIGIN_TRIAL_TOKEN;
+  const env = loadEnv(mode, process.cwd(), '');
+  const webMcpOriginTrialToken = env.VITE_WEBMCP_ORIGIN_TRIAL_TOKEN;
+  const apiProxyTarget = env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   return {
   plugins: [react(), {
@@ -25,11 +27,11 @@ export default defineConfig(({ mode }) => {
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
       '/static': {
-        target: 'http://localhost:8000',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },

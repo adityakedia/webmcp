@@ -1,125 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
+import { Download, Play, Share2, Upload } from 'lucide-react';
 import { useSimulationStore } from '../store/simulation';
-import { apiUrl } from '../lib/api';
 import { renderSimulatedWav, shareSimulatedWav } from '../lib/simulatedAudio';
 
-const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
+const samples = [
+  { id: 'piano', name: 'Piano study', detail: 'Natural dynamics', url: '/wav/sample-15s.wav' },
+  { id: 'voice', name: 'Vocal detail', detail: 'Midrange focus', url: '/wav/sample-3s.wav' },
+  { id: 'electronic', name: 'Electronic bass', detail: 'Low-frequency extension', url: '/wav/audio-track-cy-14.mp3' },
+  { id: 'ambient', name: 'Ambient texture', detail: 'Space and decay', url: '/wav/freesound_community-harddrive-2tb-failure-71691.mp3' },
+  { id: 'keys', name: 'Keyboard bass', detail: 'Transient response', url: '/wav/Casio-CTK-611-Touch-Bass-C2.wav' },
+] as const;
 
 export default function AudioPlayer() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { audioFile, setAudioFile, simulationResult } = useSimulationStore();
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [isPreparing, setIsPreparing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [mode, setMode] = useState<'original' | 'simulated'>('original');
-  const [simulatedLevel, setSimulatedLevel] = useState(4);
-  const [isExporting, setIsExporting] = useState(false);
-  const contextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const audioBufferRef = useRef<AudioBuffer | null>(null);
-
-  function stop() {
-    sourceRef.current?.stop();
-    sourceRef.current = null;
-    setIsPlaying(false);
-  }
-
-  useEffect(() => () => { sourceRef.current?.stop(); void contextRef.current?.close(); }, []);
-  useEffect(() => { stop(); }, [simulationResult?.simulationId]);
-  async function handleFile(file: File | undefined) {
-    stop();
-    audioBufferRef.current = null;
-    if (!file) { setAudioFile(null); return; }
-    if (file.size > MAX_AUDIO_BYTES) { setAudioFile(null); setFileError('Choose an audio file smaller than 50 MB.'); return; }
-    setIsPreparing(true); setFileError(null);
-    try {
-      const context = contextRef.current ?? new AudioContext();
-      contextRef.current = context;
-      audioBufferRef.current = await context.decodeAudioData(await file.arrayBuffer());
-      setAudioFile(file);
-    }
-    catch (error) {
-      setAudioFile(null);
-      setFileError(error instanceof Error && error.message ? `This browser could not decode the file: ${error.message}` : 'This browser could not decode the audio file.');
-    } finally { setIsPreparing(false); }
-  }
-
-  async function play(nextMode: 'original' | 'simulated') {
-    if (!audioFile || (nextMode === 'simulated' && !simulationResult)) return;
-    const currentSimulation = simulationResult;
-    stop();
-    const context = contextRef.current ?? new AudioContext();
-    contextRef.current = context;
-    if (context.state === 'suspended') await context.resume();
-    const source = context.createBufferSource();
-    source.buffer = audioBufferRef.current ?? await context.decodeAudioData(await audioFile.arrayBuffer());
-    if (nextMode === 'simulated') {
-      const responses = await Promise.all(
-        [currentSimulation!.impulseResponses.left, currentSimulation!.impulseResponses.right].map((url) => fetch(apiUrl(url), { cache: 'no-store' })),
-      );
-      if (responses.some((response) => !response.ok)) throw new Error('Could not load the room impulse response.');
-      const impulseResponses = await Promise.all(responses.map(async (response) => context.decodeAudioData(await response.arrayBuffer())));
-      const merger = context.createChannelMerger(2);
-      impulseResponses.forEach((impulseResponse, channel) => {
-        const convolver = context.createConvolver();
-        convolver.normalize = false;
-        convolver.buffer = impulseResponse;
-        source.connect(convolver);
-        convolver.connect(merger, 0, channel);
-      });
-      const level = context.createGain();
-      level.gain.value = simulatedLevel;
-      merger.connect(level).connect(context.destination);
-    } else {
-      source.connect(context.destination);
-    }
-    source.onended = () => setIsPlaying(false);
-    sourceRef.current = source;
-    setMode(nextMode);
-    setIsPlaying(true);
-    source.start();
-  }
-  async function exportSimulatedAudio(share = false) {
-    if (!audioFile || !simulationResult) return;
-    setIsExporting(true); setFileError(null);
-    try { const wav = await renderSimulatedWav(audioFile, simulationResult, simulatedLevel); if (share) { const asset = await shareSimulatedWav(wav, simulationResult.simulationId); setFileError(`Shared with agent until ${new Date(asset.expiresAt).toLocaleTimeString()}.`); } else { const url = URL.createObjectURL(wav); const link = document.createElement('a'); link.href = url; link.download = `acoustom-${simulationResult.simulationId}.wav`; link.click(); URL.revokeObjectURL(url); } }
-    catch (error) { setFileError(error instanceof Error ? error.message : 'Could not render simulated audio.'); }
-    finally { setIsExporting(false); }
-  }
-
-  return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
-      <h3 className="text-lg font-semibold mb-4">Audio Source</h3>
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm text-slate-400 mb-2">Choose a listening track</label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={(e) => void handleFile(e.target.files?.[0])}
-            className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-          />
-        </div>
-
-        <div className="border-t border-slate-700 pt-4">
-          <p className="text-sm text-slate-500">{isPreparing ? 'Preparing audio…' : audioFile ? `Ready: ${audioFile.name}` : 'Choose a track to audition the current room response. Audio stays in your browser.'}</p>
-          {fileError && <p className="mt-2 text-sm text-red-300">{fileError}</p>}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-700">
-          <button disabled={!audioFile || isPlaying || isPreparing} onClick={() => void play('original').catch((error) => setFileError(error instanceof Error ? error.message : 'Playback failed.'))} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Play original</button>
-          <button disabled={!audioFile || !simulationResult || isPlaying || isPreparing} onClick={() => void play('simulated').catch((error) => setFileError(error instanceof Error ? error.message : 'Playback failed.'))} className="rounded-lg bg-blue-600 px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-50">Play in room</button>
-          <button disabled={!audioFile || !simulationResult || isExporting} onClick={() => void exportSimulatedAudio()} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">{isExporting ? 'Rendering…' : 'Download simulated WAV'}</button>
-          <button disabled={!audioFile || !simulationResult || isExporting} onClick={() => void exportSimulatedAudio(true)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Share with agent</button>
-          <button disabled={!isPlaying} onClick={stop} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600 disabled:opacity-50">Stop</button>
-          <span className="text-sm text-slate-400">{isPlaying ? `Playing ${mode}` : simulationResult ? 'Ready for instant A/B playback' : 'Room response is updating'}</span>
-        </div>
-        <label className="block border-t border-slate-700 pt-4 text-sm text-slate-400">Room playback gain: {simulatedLevel.toFixed(1)}×
-          <input type="range" min="0.5" max="4" step="0.1" value={simulatedLevel} onChange={(event) => setSimulatedLevel(Number(event.target.value))} className="mt-2 block w-full" />
-        </label>
-      </div>
-    </div>
-  );
+  const fileInput = useRef<HTMLInputElement>(null); const { audioFile, setAudioFile, simulationResult } = useSimulationStore(); const [selectedId, setSelectedId] = useState('piano'); const [originalUrl, setOriginalUrl] = useState<string | null>(null); const [roomUrl, setRoomUrl] = useState<string | null>(null); const [status, setStatus] = useState('Choose a reference track to compare.'); const [isRendering, setIsRendering] = useState(false);
+  const selectedSample = samples.find((sample) => sample.id === selectedId) ?? samples[0];
+  useEffect(() => { void selectSample(selectedSample.id); // Seed the player with a useful reference track.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { if (!audioFile) return; const url = URL.createObjectURL(audioFile); setOriginalUrl(url); return () => URL.revokeObjectURL(url); }, [audioFile]);
+  useEffect(() => { let cancelled = false; if (!audioFile || !simulationResult) { setRoomUrl(null); return; } setIsRendering(true); setStatus('Rendering the room version…'); void renderSimulatedWav(audioFile, simulationResult, 1).then((wav) => { if (cancelled) return; const url = URL.createObjectURL(wav); setRoomUrl((previous) => { if (previous) URL.revokeObjectURL(previous); return url; }); setStatus('Ready for side-by-side listening.'); }).catch((error) => { if (!cancelled) setStatus(error instanceof Error ? error.message : 'Could not render the room version.'); }).finally(() => { if (!cancelled) setIsRendering(false); }); return () => { cancelled = true; }; }, [audioFile, simulationResult]);
+  async function selectSample(id: string) { const sample = samples.find((item) => item.id === id) ?? samples[0]; setSelectedId(sample.id); setStatus(`Loading ${sample.name}…`); try { const response = await fetch(sample.url); if (!response.ok) throw new Error('The sample could not be loaded.'); const blob = await response.blob(); setAudioFile(new File([blob], sample.url.split('/').pop() ?? `${sample.id}.wav`, { type: blob.type || 'audio/wav' })); setStatus('Reference track ready.'); } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not load the sample.'); } }
+  async function share() { if (!roomUrl || !simulationResult || !audioFile) return; try { const asset = await shareSimulatedWav(await renderSimulatedWav(audioFile, simulationResult, 1), simulationResult.simulationId); setStatus(`Room version shared with agent until ${new Date(asset.expiresAt).toLocaleTimeString()}.`); } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not share the room version.'); } }
+  return <section className="listening-console"><div className="console-heading"><div><p className="lab-panel-label">Listen and compare</p><h2>{selectedSample.name}</h2><span>{selectedSample.detail}</span></div><button className="upload-track" onClick={() => fileInput.current?.click()}><Upload size={14} /> Your track</button><input ref={fileInput} hidden type="file" accept="audio/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setSelectedId(''); setAudioFile(file); setStatus(`${file.name} ready.`); } }} /></div><div className="sample-list">{samples.map((sample) => <button key={sample.id} className={sample.id === selectedId ? 'selected' : ''} onClick={() => void selectSample(sample.id)}><Play size={12} /><span>{sample.name}</span></button>)}</div><div className="audio-compare"><article><div><span>Original</span><small>Reference track</small></div>{originalUrl ? <audio controls src={originalUrl} /> : <div className="audio-loading">Preparing audio…</div>}</article><article className="room-audio"><div><span>In your room</span><small>{isRendering ? 'Rendering response…' : simulationResult ? 'Room response applied' : 'Waiting for simulation'}</small></div>{roomUrl ? <audio controls src={roomUrl} /> : <div className="audio-loading">{isRendering ? 'Rendering…' : 'Set room details to create this version.'}</div>}</article></div><div className="console-footer"><p>{status}</p><div>{roomUrl && <a href={roomUrl} download={`acoustom-room-${simulationResult?.simulationId ?? 'preview'}.wav`}><Download size={14} /> Download</a>}{roomUrl && <button onClick={() => void share()}><Share2 size={14} /> Share with agent</button>}</div></div></section>;
 }

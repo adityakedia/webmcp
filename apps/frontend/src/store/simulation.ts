@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import type { ListenerPosition, RoomDimensions, SimulationResult, SimulationStatus, SpeakerPosition } from '@acoustom/types';
 
+export type RoomReferenceAsset = { id: string; imageUrl: string; fileName: string; mimeType: string; expiresAt: string };
+
 interface SimulationStore {
   selectedSpeakerId: string | null;
   roomDimensions: RoomDimensions & { presetId: string };
   speakerPositions: { left: SpeakerPosition; right: SpeakerPosition };
   listenerPosition: ListenerPosition;
   audioFile: File | null;
+  roomReferenceAssets: RoomReferenceAsset[];
   simulationResult: SimulationResult | null;
   simulationStatus: SimulationStatus;
   simulationError: string | null;
@@ -16,6 +19,7 @@ interface SimulationStore {
   setSpeakerPosition: (side: 'left' | 'right', pos: Partial<SimulationStore['speakerPositions']['left']>) => void;
   setListenerPosition: (pos: Partial<SimulationStore['listenerPosition']>) => void;
   setAudioFile: (file: File | null) => void;
+  setRoomReferenceAssets: (assets: RoomReferenceAsset[]) => void;
   setSimulationState: (status: SimulationStatus, result?: SimulationResult | null, error?: string | null) => void;
   retrySimulation: () => void;
 }
@@ -24,11 +28,12 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   selectedSpeakerId: null,
   roomDimensions: { width: 5, length: 4, height: 2.7, presetId: 'living_room' },
   speakerPositions: {
-    left: { x: 1.2, y: 0.6, z: 0.8, rotation: 15 },
-    right: { x: 3.8, y: 0.6, z: 0.8, rotation: -15 },
+    left: { x: 1.2, y: 0.8, z: 0.6, rotation: 15 },
+    right: { x: 3.8, y: 0.8, z: 0.6, rotation: -15 },
   },
   listenerPosition: { x: 2.5, y: 3.2, z: 1.1 },
   audioFile: null,
+  roomReferenceAssets: [],
   simulationResult: null,
   simulationStatus: 'idle',
   simulationError: null,
@@ -56,6 +61,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     })),
   setListenerPosition: (pos) => set((s) => ({ listenerPosition: { ...s.listenerPosition, ...pos }, simulationResult: null, simulationStatus: 'queued' })),
   setAudioFile: (file) => set({ audioFile: file }),
+  setRoomReferenceAssets: (roomReferenceAssets) => set({ roomReferenceAssets }),
   setSimulationState: (simulationStatus, simulationResult, simulationError = null) => set((state) => ({
     simulationStatus,
     simulationResult: simulationResult === undefined ? state.simulationResult : simulationResult,
