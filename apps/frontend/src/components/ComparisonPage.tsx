@@ -48,6 +48,7 @@ const room = { width: 5, length: 4, height: 2.7, presetId: 'living_room' },
     { x: 3.8, y: 0.8, z: 0.6, rotation: -15 },
   ],
   listener = { x: 2.5, y: 3.2, z: 1.1 };
+const referenceTrackUrl = new URL('../../wav/sample-15s.wav', import.meta.url).href;
 const usd = (x: string | number) =>
   `$${(typeof x === 'number' ? x : Number(x.replace(/[^0-9.]/g, '')) || 0).toLocaleString('en-US')}`;
 const icon = (m: string) =>
@@ -229,7 +230,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
     const abort = new AbortController(),
       urls: string[] = [];
     const run = async () => {
-      const source = await fetch('/wav/sample-15s.wav');
+      const source = await fetch(referenceTrackUrl);
       const track = new File([await source.blob()], 'reference.wav', {
         type: 'audio/wav',
       });
@@ -361,7 +362,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
           <div className="matrix-head">
             <span>Sound simulation</span>
             <small>Original reference</small>
-            <Player source="/wav/sample-15s.wav" label="Reference track" />
+            <Player source={referenceTrackUrl} label="Reference track" />
           </div>
           {cells((s, i) => (
             <div className="matrix-cell matrix-sound" key={i}>

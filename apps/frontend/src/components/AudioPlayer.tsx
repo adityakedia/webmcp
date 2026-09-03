@@ -4,25 +4,38 @@ import { useSimulationStore } from '../store/simulation';
 import { renderSimulatedWav, shareSimulatedWav } from '../lib/simulatedAudio';
 
 const samples = [
-  { id: 'piano', name: 'Piano study', detail: 'Natural dynamics', url: '/wav/sample-15s.wav' },
-  { id: 'voice', name: 'Vocal detail', detail: 'Midrange focus', url: '/wav/sample-3s.wav' },
+  {
+    id: 'piano',
+    name: 'Piano study',
+    detail: 'Natural dynamics',
+    url: new URL('../../wav/sample-15s.wav', import.meta.url).href,
+  },
+  {
+    id: 'voice',
+    name: 'Vocal detail',
+    detail: 'Midrange focus',
+    url: new URL('../../wav/sample-3s.wav', import.meta.url).href,
+  },
   {
     id: 'electronic',
     name: 'Electronic bass',
     detail: 'Low-frequency extension',
-    url: '/wav/audio-track-cy-14.mp3',
+    url: new URL('../../wav/audio-track-cy-14.mp3', import.meta.url).href,
   },
   {
     id: 'ambient',
     name: 'Ambient texture',
     detail: 'Space and decay',
-    url: '/wav/freesound_community-harddrive-2tb-failure-71691.mp3',
+    url: new URL(
+      '../../wav/freesound_community-harddrive-2tb-failure-71691.mp3',
+      import.meta.url
+    ).href,
   },
   {
     id: 'keys',
     name: 'Keyboard bass',
     detail: 'Transient response',
-    url: '/wav/Casio-CTK-611-Touch-Bass-C2.wav',
+    url: new URL('../../wav/Casio-CTK-611-Touch-Bass-C2.wav', import.meta.url).href,
   },
 ] as const;
 
