@@ -527,6 +527,10 @@ const responseSchemas: Record<string, Json> = {
     type: 'object',
     required: ['ok', 'referenceTrackRequest', 'activeReferenceTrackLabel'],
   },
+  upload_reference_audio: {
+    type: 'object',
+    required: ['ok', 'fileName', 'mimeType', 'sizeBytes'],
+  },
   set_music_preferences: {
     type: 'object',
     required: ['ok', 'musicPreferences'],
@@ -1365,7 +1369,7 @@ export function useWebMcp(options: Options): void {
         name: 'compare_speakers',
         title: 'Compare speakers',
         description:
-          'Returns a column-per-speaker comparison for two to five catalog speakers and/or local custom builds. Prices are USD per pair; a custom build’s price is the configured component total from validation. Pass includeSimulation:true to run every column through the current live listening-lab room and report RT60 plus frequency response together; in that case the result depends on the room the user is currently simulating in, so call apply_agent_room_estimate or get_current_room_spec first when the room is unknown.',
+          'Returns a column-per-speaker comparison for two to five catalog speakers and/or local custom builds. Prices are USD per pair; a custom build’s price is the configured component total from validation. Pass includeSimulation:true to run every column through the current live listening-lab room and return the complete simulation result: simulation id, impulse-response URLs, RT60, early decay time, C80 clarity, D50 definition, frequency response, and speaker performance. The result depends on the room the user is currently simulating in, so call apply_agent_room_estimate or get_current_room_spec first when the room is unknown.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -1382,7 +1386,7 @@ export function useWebMcp(options: Options): void {
               type: 'boolean',
               default: false,
               description:
-                'When true, simulate every column in the current live listening-lab room and return RT60 plus frequency response alongside the specifications.',
+                'When true, simulate every column in the current live listening-lab room and return the complete simulation data alongside the specifications.',
             },
           },
           additionalProperties: false,
@@ -1423,7 +1427,7 @@ export function useWebMcp(options: Options): void {
               specifications: Object.fromEntries(build.specs ?? []),
             };
           });
-          let simulations: Array<Record<string, unknown> | null> | null = null;
+          let simulations: Array<SimulationResult | null> | null = null;
           if (includeSimulation) {
             const sim = useSimulationStore.getState();
             const room = sim.roomDimensions;
@@ -1460,11 +1464,7 @@ export function useWebMcp(options: Options): void {
                   });
                   if (!response.ok) return null;
                   const result = (await response.json()) as SimulationResult;
-                  return {
-                    rt60: result.metrics.rt60,
-                    frequencyResponse: result.frequencyResponse,
-                    speakerPerformance: result.speakerPerformance,
-                  };
+                  return result;
                 } catch {
                   return null;
                 }
@@ -1473,18 +1473,7 @@ export function useWebMcp(options: Options): void {
           }
           const columns = [...catalogColumns, ...buildColumns].map((column, index) => ({
             ...column,
-            simulation:
-              simulations && simulations[index]
-                ? {
-                    rt60: (simulations[index] as { rt60: number }).rt60,
-                    frequencyResponse: (
-                      simulations[index] as { frequencyResponse: SimulationResult['frequencyResponse'] }
-                    ).frequencyResponse,
-                    speakerPerformance: (
-                      simulations[index] as { speakerPerformance: SimulationResult['speakerPerformance'] }
-                    ).speakerPerformance,
-                  }
-                : null,
+            simulation: simulations?.[index] ?? null,
           }));
           return {
             columns,
@@ -1601,6 +1590,40 @@ export function useWebMcp(options: Options): void {
             referenceTrackRequest: state.referenceTrackRequest,
             activeReferenceTrackLabel: state.activeReferenceTrackLabel,
           };
+        },
+      },
+      {
+        name: 'upload_reference_audio',
+        title: 'Upload reference audio',
+        description:
+          'Loads agent-provided reference audio into the listening lab. Pass a data URL containing an audio file; the audio remains in this browser and is not uploaded to Acoustom servers.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            dataUrl: {
+              type: 'string',
+              description: 'A data URL such as data:audio/wav;base64,...',
+              maxLength: 35_000_000,
+            },
+            fileName: { type: 'string', minLength: 1, maxLength: 200 },
+          },
+          required: ['dataUrl', 'fileName'],
+          additionalProperties: false,
+        },
+        annotations: action,
+        execute: ({ dataUrl, fileName }) => {
+          if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:audio/'))
+            throw new Error('dataUrl must be an audio data URL.');
+          const match = dataUrl.match(/^data:(audio\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i);
+          if (!match) throw new Error('dataUrl must contain base64-encoded audio.');
+          const binary = atob(match[2].replace(/\s/g, ''));
+          if (binary.length > 25 * 1024 * 1024)
+            throw new Error('Reference audio must be 25 MB or smaller.');
+          const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+          const file = new File([bytes], String(fileName), { type: match[1] });
+          useSimulationStore.getState().setAudioFile(file);
+          useAgentViewStore.getState().setActiveReferenceTrackLabel(file.name);
+          return { ok: true, fileName: file.name, mimeType: file.type, sizeBytes: file.size };
         },
       },
       {

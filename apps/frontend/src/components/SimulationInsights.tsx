@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RoomDimensions, SimulationResult } from '@acoustom/types';
+import { apiUrl } from '../lib/api';
 
 type Props = { result: SimulationResult | null; room: RoomDimensions; speakerName: string | null };
 const roomLabel = (rt60: number) =>
@@ -87,7 +88,7 @@ function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) 
   useEffect(() => {
     let cancelled = false;
     const context = new AudioContext();
-    Promise.all([urls.left, urls.right].map((url) => fetch(url).then((response) => response.arrayBuffer()).then((data) => context.decodeAudioData(data))))
+    Promise.all([urls.left, urls.right].map((url) => fetch(apiUrl(url)).then((response) => response.arrayBuffer()).then((data) => context.decodeAudioData(data))))
       .then((buffers) => {
         if (cancelled) return;
         const length = Math.min(...buffers.map((buffer) => buffer.length));
@@ -179,6 +180,20 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
               <small>estimated</small>
             </div>
             <ModeChart room={room} />
+          </div>
+          <div>
+            <div className="insight-title">
+              <span>Frequency response</span>
+              <small>modelled in-room gain</small>
+            </div>
+            <FrequencyChart points={analysisResult.frequencyResponse} />
+          </div>
+          <div>
+            <div className="insight-title">
+              <span>Impulse response</span>
+              <small>left + right channels</small>
+            </div>
+            <ImpulseChart urls={analysisResult.impulseResponses} />
           </div>
         </div>
         <p className="insight-disclaimer">
