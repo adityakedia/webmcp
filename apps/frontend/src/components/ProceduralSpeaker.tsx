@@ -140,6 +140,8 @@ export function SpeakerModel({
   const shell = 0.09;
   const tweeterY = height - 0.62;
   const wooferY = tall ? 1.2 : 1;
+  const extendedTwoWay = config.platformId === 'two_way_extended';
+  const threeWay = config.platformId === 'three_way_reference';
   const portY = 0.32;
   const radius = config.cabinet.edgeProfile === 'sculpted_radius' ? 0.12 : 0.045;
   const bassScale =
@@ -148,6 +150,8 @@ export function SpeakerModel({
       : config.bass.bassCharacter === 'extended'
         ? 1.1
         : 1;
+  const wooferRadius =
+    (subwoofer ? width * 0.33 : extendedTwoWay ? 0.72 : tall ? 0.54 : 0.62) * bassScale;
   const portRadius = Math.min(
     width * 0.16,
     Math.max(0.09, ((config.bass.portInnerDiameterMm ?? 50) / 250) * bassScale)
@@ -241,7 +245,7 @@ export function SpeakerModel({
         position={[0, height / 2 + 0.16, depth / 2 + 0.035]}
         castShadow
       >
-        <Material finish="black_ash" />
+        <Material finish={config.cabinet.finish} />
       </RoundedBox>
       <mesh position={[0, height * 0.52 + 0.16, 0]} castShadow>
         <boxGeometry args={[width - 0.16, 0.08, depth - 0.16]} />
@@ -264,11 +268,11 @@ export function SpeakerModel({
           )}
           <Driver
             position={[0, wooferY + 0.16, depth / 2 + 0.1]}
-            radius={(subwoofer ? width * 0.33 : tall ? 0.54 : 0.62) * bassScale}
+            radius={wooferRadius}
             selected={false}
             onSelect={() => undefined}
           />
-          {config.platformId === 'three_way_reference' && (
+          {threeWay && (
             <Driver
               position={[0, height * 0.52 + 0.16, depth / 2 + 0.1]}
               radius={0.34}
@@ -299,9 +303,10 @@ export function SpeakerModel({
         >
           <meshStandardMaterial
             color={config.cabinet.grille === 'perforated_metal' ? '#454542' : '#262724'}
-            roughness={0.75}
+            roughness={config.cabinet.grille === 'perforated_metal' ? 0.38 : 0.9}
+            metalness={config.cabinet.grille === 'perforated_metal' ? 0.5 : 0}
             transparent
-            opacity={0.35}
+            opacity={config.cabinet.grille === 'perforated_metal' ? 0.48 : 0.68}
           />
         </RoundedBox>
       )}
@@ -317,14 +322,14 @@ export function SpeakerModel({
           </mesh>
         </group>
       )}
-      {config.personalisation.kind === 'pattern' &&
+      {showPersonalisation && config.personalisation.kind === 'pattern' &&
         [-0.24, 0, 0.24].map((z) => (
           <mesh key={z} position={[width / 2 + 0.012, height * 0.5 + 0.16, z]}>
             <boxGeometry args={[0.012, height * 0.58, 0.055]} />
             <meshStandardMaterial color="#b99b74" roughness={0.56} transparent opacity={0.72} />
           </mesh>
         ))}
-      {config.personalisation.kind === 'printed_panel' && (
+      {showPersonalisation && config.personalisation.kind === 'printed_panel' && (
         <RoundedBox
           args={[0.014, height * 0.52, depth * 0.62]}
           radius={0.02}
@@ -334,7 +339,7 @@ export function SpeakerModel({
           <meshStandardMaterial color="#47576a" roughness={0.56} />
         </RoundedBox>
       )}
-      {config.personalisation.kind === 'decal' && (
+      {showPersonalisation && config.personalisation.kind === 'decal' && (
         <mesh
           rotation={[0, Math.PI / 2, 0]}
           position={[width / 2 + 0.014, height * 0.3 + 0.16, depth * 0.18]}
@@ -343,7 +348,7 @@ export function SpeakerModel({
           <meshStandardMaterial color="#d6d1c7" roughness={0.42} />
         </mesh>
       )}
-      {config.personalisation.kind === 'custom_artwork' && (
+      {showPersonalisation && config.personalisation.kind === 'custom_artwork' && (
         <RoundedBox
           args={[0.014, height * 0.62, depth * 0.72]}
           radius={0.02}

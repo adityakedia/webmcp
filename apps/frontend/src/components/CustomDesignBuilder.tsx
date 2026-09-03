@@ -108,6 +108,19 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     personalisation:
       initialBuild?.configuration.personalisation.kind ?? ('none' as PersonalisationKind),
   });
+  const resetState = () =>
+    setState({
+      format: 'standmount',
+      platform: 'two_way_compact' as AcousticPlatformId,
+      enclosure: 'ported',
+      character: 'balanced',
+      size: 'standard',
+      grille: 'magnetic_fabric',
+      base: 'stand',
+      edge: 'soft_radius',
+      finish: 'walnut' as CabinetFinishId,
+      personalisation: 'none' as PersonalisationKind,
+    });
   const choose = <K extends keyof typeof state>(
     category: Category,
     key: K,
@@ -120,20 +133,35 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     setState((current) => ({
       ...current,
       format,
-      platform: format === 'subwoofer' ? 'subwoofer_active' : current.platform,
+      platform:
+        format === 'subwoofer'
+          ? 'subwoofer_active'
+          : current.platform === 'subwoofer_active'
+            ? format === 'floorstanding'
+              ? 'two_way_extended'
+              : 'two_way_compact'
+            : current.platform,
+      base: format === 'standmount' ? current.base : current.base === 'stand' ? 'slim_feet' : current.base,
     }));
     setTouched((current) => (current.includes('format') ? current : [...current, 'format']));
   };
   const choosePlatform = (platform: AcousticPlatformId) => {
+    const formatByPlatform: Record<AcousticPlatformId, (typeof state)['format']> = {
+      two_way_compact: 'standmount',
+      two_way_extended: 'floorstanding',
+      three_way_reference: 'standmount',
+      subwoofer_active: 'subwoofer',
+    };
     setState((current) => ({
       ...current,
       platform,
-      format:
-        platform === 'subwoofer_active'
-          ? 'subwoofer'
-          : current.format === 'subwoofer'
-            ? 'standmount'
-            : current.format,
+      format: formatByPlatform[platform],
+      base:
+        formatByPlatform[platform] === 'standmount'
+          ? current.base
+          : current.base === 'stand'
+            ? 'slim_feet'
+            : current.base,
     }));
     setTouched((current) => (current.includes('platform') ? current : [...current, 'platform']));
   };
@@ -326,6 +354,8 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     }
     setActiveBuildId('');
     setBuildName(`Untitled ${String(builds.length + 1).padStart(2, '0')}`);
+    resetState();
+    setPreferences({});
     setTouched([]);
     setStep(0);
   };
