@@ -18,8 +18,6 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.signal import butter, sosfreqz
 
-from .public_catalog import PUBLIC_CATALOG
-
 
 @dataclass(frozen=True)
 class CatalogSpeakerProfile:
@@ -64,31 +62,15 @@ def _parse_sensitivity(specs: list[list[str]]) -> float:
     return 87.0
 
 
-def _build_profiles() -> dict[str, CatalogSpeakerProfile]:
-    profiles: dict[str, CatalogSpeakerProfile] = {}
-    for speaker in PUBLIC_CATALOG:
-        name = speaker["name"]
-        specs = speaker["specs"]
-        low, high = _parse_freq_response(specs)
-        sens = _parse_sensitivity(specs)
-        tilt = _VOICING_TILT.get(name.casefold(), 0.0)
-        speaker_id = name.casefold().replace(" ", "_")
-        profiles[name.casefold()] = CatalogSpeakerProfile(
-            id=speaker_id,
-            name=name,
-            low_frequency_hz=low,
-            high_frequency_hz=high,
-            sensitivity_db=sens,
-            voicing_tilt_db_per_decade=tilt,
-        )
-    return profiles
-
-
-CATALOG_SPEAKER_PROFILES = _build_profiles()
-
-
-def get_catalog_profile(speaker_id: str) -> CatalogSpeakerProfile | None:
-    return CATALOG_SPEAKER_PROFILES.get(speaker_id.casefold())
+def build_catalog_profile(speaker: dict) -> CatalogSpeakerProfile:
+    """Build a simulation profile from one database catalog row."""
+    name = speaker["name"]
+    low, high = _parse_freq_response(speaker["specs"])
+    return CatalogSpeakerProfile(
+        id=speaker["id"], name=name, low_frequency_hz=low, high_frequency_hz=high,
+        sensitivity_db=_parse_sensitivity(speaker["specs"]),
+        voicing_tilt_db_per_decade=_VOICING_TILT.get(name.casefold(), 0.0),
+    )
 
 
 def catalog_transfer_function(

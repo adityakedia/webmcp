@@ -613,357 +613,357 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
   return (
     <>
       <main className="editor-page">
-      <div className="editor-top">
-        <button className="back-link" onClick={onBack}>
-          ← Back to collection
-        </button>
-        <span className="editor-title">
-          CUSTOM SPEAKER /{' '}
-          <input
-            aria-label="Build name"
-            value={buildName}
-            onChange={(event) => setBuildName(event.target.value)}
-          />
-        </span>
-        <div className="build-library">
-          <select
-            aria-label="Choose build"
-            value={activeBuildId}
-            onChange={(event) => activateBuild(event.target.value)}
-          >
-            <option value="">New build</option>
-            {builds.map((build) => (
-              <option key={build.id} value={build.id}>
-                {build.name}
-              </option>
-            ))}
-          </select>
-          <button onClick={newBuild} title="New build">
-            <Plus size={14} /> New
+        <div className="editor-top">
+          <button className="back-link" onClick={onBack}>
+            ← Back to collection
           </button>
-          <button onClick={duplicateBuild} disabled={!activeBuildId} title="Duplicate build">
-            <Copy size={14} /> Duplicate
-          </button>
-          <button onClick={deleteBuild} disabled={!activeBuildId} title="Delete build">
-            <Trash2 size={14} /> Delete
-          </button>
-          <div className="build-menu-wrap">
-            <button
-              className="build-menu"
-              onClick={() => setBuildMenuOpen((open) => !open)}
-              title="More build actions"
-              aria-label="More build actions"
-              aria-expanded={buildMenuOpen}
+          <span className="editor-title">
+            CUSTOM SPEAKER /{' '}
+            <input
+              aria-label="Build name"
+              value={buildName}
+              onChange={(event) => setBuildName(event.target.value)}
+            />
+          </span>
+          <div className="build-library">
+            <select
+              aria-label="Choose build"
+              value={activeBuildId}
+              onChange={(event) => activateBuild(event.target.value)}
             >
-              <MoreHorizontal size={16} />
+              <option value="">New build</option>
+              {builds.map((build) => (
+                <option key={build.id} value={build.id}>
+                  {build.name}
+                </option>
+              ))}
+            </select>
+            <button onClick={newBuild} title="New build">
+              <Plus size={14} /> New
             </button>
-            {buildMenuOpen && (
-              <div className="build-actions-menu" role="menu">
-                <button onClick={newBuild} role="menuitem">
-                  <Plus size={14} /> New build
-                </button>
-                <button onClick={duplicateBuild} disabled={!activeBuildId} role="menuitem">
-                  <Copy size={14} /> Duplicate
-                </button>
-                <button
-                  disabled={!activeBuildId}
-                  onClick={() => {
-                    const name = window.prompt('Rename custom build', buildName)?.trim();
-                    if (name) setBuildName(name);
-                    setBuildMenuOpen(false);
-                  }}
-                  role="menuitem"
-                >
-                  Rename
-                </button>
-                <button onClick={deleteBuild} disabled={!activeBuildId} role="menuitem">
-                  <Trash2 size={14} /> Delete
-                </button>
+            <button onClick={duplicateBuild} disabled={!activeBuildId} title="Duplicate build">
+              <Copy size={14} /> Duplicate
+            </button>
+            <button onClick={deleteBuild} disabled={!activeBuildId} title="Delete build">
+              <Trash2 size={14} /> Delete
+            </button>
+            <div className="build-menu-wrap">
+              <button
+                className="build-menu"
+                onClick={() => setBuildMenuOpen((open) => !open)}
+                title="More build actions"
+                aria-label="More build actions"
+                aria-expanded={buildMenuOpen}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {buildMenuOpen && (
+                <div className="build-actions-menu" role="menu">
+                  <button onClick={newBuild} role="menuitem">
+                    <Plus size={14} /> New build
+                  </button>
+                  <button onClick={duplicateBuild} disabled={!activeBuildId} role="menuitem">
+                    <Copy size={14} /> Duplicate
+                  </button>
+                  <button
+                    disabled={!activeBuildId}
+                    onClick={() => {
+                      const name = window.prompt('Rename custom build', buildName)?.trim();
+                      if (name) setBuildName(name);
+                      setBuildMenuOpen(false);
+                    }}
+                    role="menuitem"
+                  >
+                    Rename
+                  </button>
+                  <button onClick={deleteBuild} disabled={!activeBuildId} role="menuitem">
+                    <Trash2 size={14} /> Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="step-tabs">
+          {steps.map((name, i) => (
+            <button
+              key={name}
+              className={step === i ? 'active' : step > i ? 'done' : ''}
+              onClick={() => setStep(i)}
+            >
+              <b>{String(i + 1).padStart(2, '0')}</b>
+              {name}
+            </button>
+          ))}
+        </div>
+        {validationError && (
+          <div className="validation-error-banner" role="alert">
+            {validationError}
+          </div>
+        )}
+        <section className={step === 0 ? 'editor-workspace brief-workspace' : 'editor-workspace'}>
+          <div className="editor-stage">
+            {touched.length > 0 && (
+              <div className="stage-build-strip">
+                <span>Selected build</span>
+                {selected
+                  .filter((row) => touched.includes(row.category))
+                  .map((row) => (
+                    <div key={row.category}>
+                      <img src={`/images/components/${row.item.image}`} alt="" />
+                      <p>
+                        <small>{row.category}</small>
+                        <b>{row.item.title}</b>
+                      </p>
+                      <em>{money(row.item.price)}</em>
+                    </div>
+                  ))}
+                <strong>
+                  Total <b>${total.toLocaleString()}</b>
+                </strong>
+              </div>
+            )}
+            {touched.length > 0 ? (
+              <ProceduralSpeaker
+                config={config}
+                showDrivers={touched.includes('platform')}
+                showBass={touched.includes('bass')}
+                showPersonalisation={touched.includes('personalisation')}
+              />
+            ) : (
+              <div className="empty-3d-state">
+                <div className="empty-speaker-outline" />
+                <strong>Your speaker will appear here</strong>
+                <span>Choose a format to begin the 3D preview.</span>
               </div>
             )}
           </div>
-        </div>
-      </div>
-      <div className="step-tabs">
-        {steps.map((name, i) => (
-          <button
-            key={name}
-            className={step === i ? 'active' : step > i ? 'done' : ''}
-            onClick={() => setStep(i)}
-          >
-            <b>{String(i + 1).padStart(2, '0')}</b>
-            {name}
-          </button>
-        ))}
-      </div>
-      {validationError && (
-        <div className="validation-error-banner" role="alert">
-          {validationError}
-        </div>
-      )}
-      <section className={step === 0 ? 'editor-workspace brief-workspace' : 'editor-workspace'}>
-        <div className="editor-stage">
-          {touched.length > 0 && (
-            <div className="stage-build-strip">
-              <span>Selected build</span>
-              {selected
-                .filter((row) => touched.includes(row.category))
-                .map((row) => (
-                  <div key={row.category}>
-                    <img src={`/images/components/${row.item.image}`} alt="" />
-                    <p>
-                      <small>{row.category}</small>
-                      <b>{row.item.title}</b>
-                    </p>
-                    <em>{money(row.item.price)}</em>
+          <aside ref={panelRef} className="editor-panel">
+            <div className="panel-heading">
+              <h1>{steps[step]}</h1>
+            </div>
+            {step === 0 && (
+              <div className="brief-step">
+                <div className="brief-hero">
+                  <p className="eyebrow">Optional starting point</p>
+                  <h2>What would make you love your next speaker?</h2>
+                  <p>
+                    Choose anything that sounds like you. We will use it only to set helpful
+                    starting choices.
+                  </p>
+                </div>
+                <div className="brief-question">
+                  <span>When a track feels right, it is…</span>
+                  <div className="brief-options">
+                    <div className="brief-option">
+                      <span>Warm and easy</span>
+                      <small>Rich, relaxed, forgiving</small>
+                    </div>
+                    <div className="brief-option">
+                      <span>Clear and natural</span>
+                      <small>Honest, all-round listening</small>
+                    </div>
+                    <div className="brief-option">
+                      <span>Big and involving</span>
+                      <small>Wide, energetic, room-filling</small>
+                    </div>
                   </div>
-                ))}
-              <strong>
-                Total <b>${total.toLocaleString()}</b>
-              </strong>
-            </div>
-          )}
-          {touched.length > 0 ? (
-            <ProceduralSpeaker
-              config={config}
-              showDrivers={touched.includes('platform')}
-              showBass={touched.includes('bass')}
-              showPersonalisation={touched.includes('personalisation')}
-            />
-          ) : (
-            <div className="empty-3d-state">
-              <div className="empty-speaker-outline" />
-              <strong>Your speaker will appear here</strong>
-              <span>Choose a format to begin the 3D preview.</span>
-            </div>
-          )}
-        </div>
-        <aside ref={panelRef} className="editor-panel">
-          <div className="panel-heading">
-            <h1>{steps[step]}</h1>
-          </div>
-          {step === 0 && (
-            <div className="brief-step">
-              <div className="brief-hero">
-                <p className="eyebrow">Optional starting point</p>
-                <h2>What would make you love your next speaker?</h2>
-                <p>
-                  Choose anything that sounds like you. We will use it only to set helpful starting
-                  choices.
+                </div>
+                <div className="brief-question">
+                  <span>Your usual listening space is…</span>
+                  <div className="brief-options">
+                    <div className="brief-option">
+                      <span>Small and close</span>
+                      <small>Bedroom, study, snug</small>
+                    </div>
+                    <div className="brief-option">
+                      <span>Everyday living room</span>
+                      <small>The usual home setup</small>
+                    </div>
+                    <div className="brief-option">
+                      <span>Open and spacious</span>
+                      <small>More distance and air</small>
+                    </div>
+                  </div>
+                </div>
+                <div className="brief-question">
+                  <span>You would like the speaker to feel…</span>
+                  <div className="brief-options two-up">
+                    <button onClick={() => choose('format', 'format', 'standmount')}>
+                      <span>Discreet</span>
+                      <small>Compact and easy to live with</small>
+                    </button>
+                    <button onClick={() => choose('format', 'format', 'floorstanding')}>
+                      <span>Confident</span>
+                      <small>A more physical presence</small>
+                    </button>
+                  </div>
+                </div>
+                <p className="optional-note">
+                  Nothing here is required. Continue to choose the specification yourself.
                 </p>
               </div>
-              <div className="brief-question">
-                <span>When a track feels right, it is…</span>
-                <div className="brief-options">
-                  <button>
-                    <span>Warm and easy</span>
-                    <small>Rich, relaxed, forgiving</small>
-                  </button>
-                  <button>
-                    <span>Clear and natural</span>
-                    <small>Honest, all-round listening</small>
-                  </button>
-                  <button>
-                    <span>Big and involving</span>
-                    <small>Wide, energetic, room-filling</small>
-                  </button>
+            )}
+            {step === 1 &&
+              group(
+                'Choose a format',
+                options.format.map((item) => (
+                  <Card
+                    key={item.id}
+                    item={item}
+                    selected={touched.includes('format') && state.format === item.id}
+                    onClick={() => choose('format', 'format', item.id)}
+                  />
+                ))
+              )}
+            {step === 2 &&
+              group(
+                'Choose an acoustic platform',
+                options.platform.map((item) => (
+                  <Card
+                    key={item.id}
+                    item={item}
+                    selected={touched.includes('platform') && state.platform === item.id}
+                    onClick={() => choose('platform', 'platform', item.id as AcousticPlatformId)}
+                  />
+                ))
+              )}
+            {step === 3 && (
+              <>
+                {group(
+                  'Enclosure',
+                  options.enclosure.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      selected={touched.includes('bass') && state.enclosure === item.id}
+                      onClick={() => choose('bass', 'enclosure', item.id)}
+                    />
+                  ))
+                )}
+                {group(
+                  'Bass character',
+                  options.character.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      selected={touched.includes('bass') && state.character === item.id}
+                      onClick={() => choose('bass', 'character', item.id)}
+                    />
+                  ))
+                )}
+              </>
+            )}
+            {step === 4 && (
+              <>
+                {group(
+                  'Cabinet size',
+                  options.size.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      selected={touched.includes('cabinet') && state.size === item.id}
+                      onClick={() => choose('cabinet', 'size', item.id)}
+                    />
+                  ))
+                )}
+                {group(
+                  'Grille',
+                  options.grille.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      selected={touched.includes('cabinet') && state.grille === item.id}
+                      onClick={() => choose('cabinet', 'grille', item.id)}
+                    />
+                  ))
+                )}
+                {group(
+                  'Base',
+                  options.base.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      disabled={item.id === 'stand' && state.format !== 'standmount'}
+                      selected={touched.includes('cabinet') && state.base === item.id}
+                      onClick={() => choose('cabinet', 'base', item.id)}
+                    />
+                  ))
+                )}
+                {group(
+                  'Edge profile',
+                  options.edge.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      selected={touched.includes('cabinet') && state.edge === item.id}
+                      onClick={() => choose('cabinet', 'edge', item.id)}
+                    />
+                  ))
+                )}
+              </>
+            )}
+            {step === 5 &&
+              group(
+                'Choose a finish',
+                options.finish.map((item) => (
+                  <Card
+                    key={item.id}
+                    item={item}
+                    selected={touched.includes('finish') && state.finish === item.id}
+                    onClick={() => choose('finish', 'finish', item.id as CabinetFinishId)}
+                  />
+                ))
+              )}
+            {step === 6 &&
+              group(
+                'Choose a treatment',
+                options.personalisation.map((item) => (
+                  <Card
+                    key={item.id}
+                    item={item}
+                    selected={
+                      touched.includes('personalisation') && state.personalisation === item.id
+                    }
+                    onClick={() =>
+                      choose('personalisation', 'personalisation', item.id as PersonalisationKind)
+                    }
+                  />
+                ))
+              )}
+            {step === 7 && (
+              <div className="review-summary">
+                <p className="panel-copy">
+                  Review the selected components, then open this exact speaker in the Listening Lab.
+                </p>
+                <div className="review-parts">
+                  {selected.map((row) => (
+                    <div key={row.category}>
+                      <img src={`/images/components/${row.item.image}`} alt="" />
+                      <span>
+                        <small>{row.category}</small>
+                        <b>{row.item.title}</b>
+                      </span>
+                      <em>{money(row.item.price)}</em>
+                    </div>
+                  ))}
+                </div>
+                <div className="review-total">
+                  <span>Estimated build total</span>
+                  <strong>${total.toLocaleString()}</strong>
                 </div>
               </div>
-              <div className="brief-question">
-                <span>Your usual listening space is…</span>
-                <div className="brief-options">
-                  <button>
-                    <span>Small and close</span>
-                    <small>Bedroom, study, snug</small>
-                  </button>
-                  <button>
-                    <span>Everyday living room</span>
-                    <small>The usual home setup</small>
-                  </button>
-                  <button>
-                    <span>Open and spacious</span>
-                    <small>More distance and air</small>
-                  </button>
-                </div>
-              </div>
-              <div className="brief-question">
-                <span>You would like the speaker to feel…</span>
-                <div className="brief-options two-up">
-                  <button onClick={() => choose('format', 'format', 'standmount')}>
-                    <span>Discreet</span>
-                    <small>Compact and easy to live with</small>
-                  </button>
-                  <button onClick={() => choose('format', 'format', 'floorstanding')}>
-                    <span>Confident</span>
-                    <small>A more physical presence</small>
-                  </button>
-                </div>
-              </div>
-              <p className="optional-note">
-                Nothing here is required. Continue to choose the specification yourself.
-              </p>
+            )}
+            <div className="panel-footer">
+              <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
+                ← Previous
+              </button>
+              <button className="next-button" onClick={() => setStep(Math.min(8, step + 1))}>
+                {step === 7 ? 'Open Listening Lab' : 'Continue'} <ArrowRight size={15} />
+              </button>
             </div>
-          )}
-          {step === 1 &&
-            group(
-              'Choose a format',
-              options.format.map((item) => (
-                <Card
-                  key={item.id}
-                  item={item}
-                  selected={touched.includes('format') && state.format === item.id}
-                  onClick={() => choose('format', 'format', item.id)}
-                />
-              ))
-            )}
-          {step === 2 &&
-            group(
-              'Choose an acoustic platform',
-              options.platform.map((item) => (
-                <Card
-                  key={item.id}
-                  item={item}
-                  selected={touched.includes('platform') && state.platform === item.id}
-                  onClick={() => choose('platform', 'platform', item.id as AcousticPlatformId)}
-                />
-              ))
-            )}
-          {step === 3 && (
-            <>
-              {group(
-                'Enclosure',
-                options.enclosure.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    selected={touched.includes('bass') && state.enclosure === item.id}
-                    onClick={() => choose('bass', 'enclosure', item.id)}
-                  />
-                ))
-              )}
-              {group(
-                'Bass character',
-                options.character.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    selected={touched.includes('bass') && state.character === item.id}
-                    onClick={() => choose('bass', 'character', item.id)}
-                  />
-                ))
-              )}
-            </>
-          )}
-          {step === 4 && (
-            <>
-              {group(
-                'Cabinet size',
-                options.size.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    selected={touched.includes('cabinet') && state.size === item.id}
-                    onClick={() => choose('cabinet', 'size', item.id)}
-                  />
-                ))
-              )}
-              {group(
-                'Grille',
-                options.grille.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    selected={touched.includes('cabinet') && state.grille === item.id}
-                    onClick={() => choose('cabinet', 'grille', item.id)}
-                  />
-                ))
-              )}
-              {group(
-                'Base',
-                options.base.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    disabled={item.id === 'stand' && state.format !== 'standmount'}
-                    selected={touched.includes('cabinet') && state.base === item.id}
-                    onClick={() => choose('cabinet', 'base', item.id)}
-                  />
-                ))
-              )}
-              {group(
-                'Edge profile',
-                options.edge.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    selected={touched.includes('cabinet') && state.edge === item.id}
-                    onClick={() => choose('cabinet', 'edge', item.id)}
-                  />
-                ))
-              )}
-            </>
-          )}
-          {step === 5 &&
-            group(
-              'Choose a finish',
-              options.finish.map((item) => (
-                <Card
-                  key={item.id}
-                  item={item}
-                  selected={touched.includes('finish') && state.finish === item.id}
-                  onClick={() => choose('finish', 'finish', item.id as CabinetFinishId)}
-                />
-              ))
-            )}
-          {step === 6 &&
-            group(
-              'Choose a treatment',
-              options.personalisation.map((item) => (
-                <Card
-                  key={item.id}
-                  item={item}
-                  selected={
-                    touched.includes('personalisation') && state.personalisation === item.id
-                  }
-                  onClick={() =>
-                    choose('personalisation', 'personalisation', item.id as PersonalisationKind)
-                  }
-                />
-              ))
-            )}
-          {step === 7 && (
-            <div className="review-summary">
-              <p className="panel-copy">
-                Review the selected components, then open this exact speaker in the Listening Lab.
-              </p>
-              <div className="review-parts">
-                {selected.map((row) => (
-                  <div key={row.category}>
-                    <img src={`/images/components/${row.item.image}`} alt="" />
-                    <span>
-                      <small>{row.category}</small>
-                      <b>{row.item.title}</b>
-                    </span>
-                    <em>{money(row.item.price)}</em>
-                  </div>
-                ))}
-              </div>
-              <div className="review-total">
-                <span>Estimated build total</span>
-                <strong>${total.toLocaleString()}</strong>
-              </div>
-            </div>
-          )}
-          <div className="panel-footer">
-            <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
-              ← Previous
-            </button>
-            <button className="next-button" onClick={() => setStep(Math.min(8, step + 1))}>
-              {step === 7 ? 'Open Listening Lab' : 'Continue'} <ArrowRight size={15} />
-            </button>
-          </div>
-        </aside>
-      </section>
+          </aside>
+        </section>
       </main>
       <BuildSheetExporter />
     </>

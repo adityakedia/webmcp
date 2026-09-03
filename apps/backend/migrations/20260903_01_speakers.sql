@@ -1,0 +1,37 @@
+DROP TABLE IF EXISTS speakers;
+
+CREATE TABLE speakers (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    type        TEXT NOT NULL,
+    price       TEXT NOT NULL,
+    image       TEXT NOT NULL,
+    tone        TEXT NOT NULL,
+    category    TEXT NOT NULL,
+    description TEXT NOT NULL,
+    specs       JSONB NOT NULL
+);
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('contour_20i', 'Contour 20i', 'Standmount speaker', '€5,000', '/images/contour-20i.png', 'New', 'Contour series', 'A meticulously balanced loudspeaker for people who want to get closer to the music. Open, honest, and effortless from the very first listen.',
+'[["System","2-way rear-ported standmount"],["Frequency response","42 Hz – 25 kHz (±3 dB)"],["Sensitivity","86 dB (2.83 V / 1 m)"],["Nominal impedance","4 Ω (3.1 Ω minimum)"],["Recommended amplifier power","60 – 200 W"],["Crossover frequency","2.1 kHz"],["Maximum SPL","108 dB at 1 m"],["Amplification","Passive (external amplification required)"],["Cabinet materials","MDF with internal bracing"],["Cabinet finishes","Natural walnut / Black ash"],["Grille","Magnetic black fabric"],["Base","Integrated plinth with decoupling feet"],["Directivity","—"],["Inputs","Single-wired speaker terminals"],["Calibration","—"],["Wireless","—"],["Room correction","—"],["Dimensions (H × W × D)","440 × 215 × 360 mm"],["Weight","15 kg each"]]');
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('confidence_20', 'Confidence 20', 'High-end standmount', '€32,000', '/images/confidence-20.png', 'Signature', 'Confidence series', 'A reference standmount speaker with a wide, precise soundstage and the composure to reveal every nuance in your favourite recording.',
+'[["System","2-way Esotar reference standmount"],["Frequency response","39 Hz – 28 kHz (±3 dB)"],["Sensitivity","87 dB (2.83 V / 1 m)"],["Nominal impedance","6 Ω (4.0 Ω minimum)"],["Recommended amplifier power","100 – 300 W"],["Crossover frequency","2.35 kHz"],["Maximum SPL","110 dB at 1 m"],["Amplification","Passive (external amplification required)"],["Cabinet materials","Composite sandwich with aluminium baffle"],["Cabinet finishes","Black high gloss / Walnut veneer"],["Grille","Magnetic black leather"],["Base","Polished aluminium plinth"],["Directivity","—"],["Inputs","Bi-wired speaker terminals"],["Calibration","—"],["Wireless","—"],["Room correction","—"],["Dimensions (H × W × D)","520 × 250 × 430 mm"],["Weight","27 kg each"]]');
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('emit_50', 'Emit 50', 'Floorstanding speaker', '€2,200', '/images/emit-50.png', 'Best seller', 'Emit series', 'Room-filling, energetic sound in a beautifully proportioned floorstander designed to make every playlist more engaging.',
+'[["System","3-way twin-woofer floorstander"],["Frequency response","31 Hz – 25 kHz (±3 dB)"],["Sensitivity","88.5 dB (2.83 V / 1 m)"],["Nominal impedance","6 Ω"],["Recommended amplifier power","40 – 180 W"],["Crossover frequency","430 Hz / 3.1 kHz"],["Maximum SPL","109 dB at 1 m"],["Amplification","Passive (external amplification required)"],["Cabinet materials","MDF with internal bracing"],["Cabinet finishes","Black ash / White satin"],["Grille","Removable grey fabric"],["Base","Outrigger plinth with spikes"],["Directivity","—"],["Inputs","Bi-wired speaker terminals"],["Calibration","—"],["Wireless","—"],["Room correction","—"],["Dimensions (H × W × D)","900 × 290 × 310 mm"],["Weight","22 kg each"]]');
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('aether_7', 'Aether 7', 'Transparent floorstanding speaker', '€18,900', '/images/aether-glass-floorstander.png', 'Material study', 'Aether series', 'A sculptural four-way system housed in acoustically inert smoked glass. The cabinet disappears visually while its exposed driver architecture makes every detail feel intentional.',
+'[["System","4-way open-frame glass floorstander"],["Frequency response","24 Hz – 32 kHz (±3 dB)"],["Sensitivity","91 dB (2.83 V / 1 m)"],["Nominal impedance","8 Ω (5.2 Ω minimum)"],["Recommended amplifier power","100 – 500 W"],["Crossover frequency","180 Hz / 1.8 kHz / 7.5 kHz"],["Maximum SPL","116 dB at 1 m"],["Amplification","Passive (external amplification required)"],["Cabinet materials","Smoked acoustic glass / Brushed aluminium"],["Cabinet finishes","Smoked glass / Brushed aluminium"],["Grille","Open-frame (no grille)"],["Base","Machined aluminium outrigger"],["Directivity","—"],["Inputs","Single-wired speaker terminals"],["Calibration","—"],["Wireless","—"],["Room correction","—"],["Dimensions (H × W × D)","1180 × 290 × 390 mm"],["Weight","41 kg each"]]');
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('terra_one', 'Terra One', 'Wireless sculptural speaker', '€2,800', '/images/terra-composite-wireless.png', 'New material', 'Terra series', 'A compact active speaker cast from recycled mineral composite. Soft in silhouette, remarkably dense in sound, and designed to sit naturally in contemporary spaces.',
+'[["System","Coaxial active speaker with rear radiator"],["Frequency response","36 Hz – 21 kHz (±3 dB)"],["Sensitivity","88 dB (built-in amplification)"],["Nominal impedance","Active input"],["Recommended amplifier power","Built-in 280 W class-D"],["Crossover frequency","Active DSP crossover"],["Maximum SPL","104 dB at 1 m"],["Amplification","280 W class-D with DSP"],["Cabinet materials","Recycled mineral composite / Graphite textile"],["Cabinet finishes","Graphite textile / Bone white"],["Grille","Integral fabric wrap"],["Base","Cast composite with silicone decouplers"],["Directivity","Coaxial constant directivity"],["Inputs","Optical / USB-C / line-in"],["Calibration","Built-in room correction (8-band EQ)"],["Wireless","Wi‑Fi 6 / AirPlay 2 / Bluetooth 5.3"],["Room correction","App-guided microphone calibration"],["Dimensions (H × W × D)","410 × 290 × 260 mm"],["Weight","12.5 kg each"]]');
+
+INSERT INTO speakers (id, name, type, price, image, tone, category, description, specs) VALUES
+('vector_12', 'Vector 12', 'Aluminium active monitor', '€6,400', '/images/vector-12.png', 'Studio edition', 'Vector series', 'A precision active monitor machined from recycled aluminium. Its wave-guided tweeter and DSP alignment deliver controlled, close-field clarity without a conventional cabinet.',
+'[["System","3-way DSP active nearfield monitor"],["Frequency response","28 Hz – 26 kHz (±2 dB)"],["Sensitivity","90 dB (built-in amplification)"],["Nominal impedance","Balanced line input"],["Recommended amplifier power","Built-in 500 W tri-amp"],["Crossover frequency","Active DSP crossover"],["Maximum SPL","112 dB at 1 m"],["Amplification","500 W tri-amplified (ICEpower)"],["Cabinet materials","Recycled aluminium / Space-black anodise"],["Cabinet finishes","Space-black anodised aluminium"],["Grille","Removable perforated aluminium"],["Base","Integrated stand-mount thread"],["Directivity","90° × 50° waveguide"],["Inputs","Balanced XLR / AES3 / USB-C"],["Calibration","Network room EQ with 8 filters"],["Wireless","—"],["Room correction","—"],["Dimensions (H × W × D)","470 × 260 × 330 mm"],["Weight","18 kg each"]]');

@@ -15,16 +15,16 @@ from app.services.component_transfer import (
     apply_mimir_transfer,
     apply_seas_403_transfer,
 )
-from app.services.catalog_profiles import apply_catalog_transfer, get_catalog_profile
+from app.services.catalog_profiles import CatalogSpeakerProfile, apply_catalog_transfer
 from app.services.custom_speaker_catalog import REFERENCE_SYSTEMS
 
 
 class SimulationService:
-    async def run(self, config: SimulationRequest) -> dict:
+    async def run(self, config: SimulationRequest, catalog_profile: CatalogSpeakerProfile | None = None) -> dict:
         """Compute source-to-listener RIRs using Pyroomacoustics' image-source model."""
-        return await asyncio.to_thread(self._compute, config)
+        return await asyncio.to_thread(self._compute, config, catalog_profile)
 
-    def _compute(self, config: SimulationRequest) -> dict:
+    def _compute(self, config: SimulationRequest, catalog_profile: CatalogSpeakerProfile | None) -> dict:
         fs = 44100
 
         simulation_id = f"sim_{uuid4().hex}"
@@ -57,7 +57,6 @@ class SimulationService:
         # One microphone receives one impulse response per source.
         rir_left = room.rir[0][0]
         rir_right = room.rir[0][1] if len(room.rir[0]) > 1 else rir_left
-        catalog_profile = get_catalog_profile(config.speakerId)
         performance = None
         if config.speakerProfile:
             performance = {
