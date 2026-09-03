@@ -17,7 +17,7 @@ type Options = { products: Product[]; getCart: () => CartItem[]; getLiked: () =>
 
 const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 const productInput = { type: 'object', properties: { productName: { type: 'string', minLength: 1, maxLength: 128, description: 'Exact or case-insensitive Acoustom product name.' } }, required: ['productName'], additionalProperties: false };
-const navigationInput: Json = { type: 'object', properties: { destination: { type: 'string', enum: ['home', 'catalog', 'product_detail', 'compare', 'listening_lab', 'custom_design'], description: 'A supported visible Acoustom destination. Never infer or construct URLs.' }, productName: { type: 'string', minLength: 1, maxLength: 128, description: 'Required only when destination is product_detail. Must be a catalog product name.' }, sectionId: { type: 'string', enum: ['top', 'speakers', 'journal', 'specifications'], description: 'Optional visible section to focus after navigation when that section exists on the destination.' } }, required: ['destination'], additionalProperties: false };
+const navigationInput: Json = { type: 'object', properties: { destination: { type: 'string', enum: ['home', 'catalog', 'product_detail', 'compare', 'listening_lab', 'custom_design'], description: 'A supported visible Acoustom destination. Never infer or construct URLs.' }, productName: { type: 'string', minLength: 1, maxLength: 128, description: 'Required only when destination is product_detail. Must be a catalog product name.' }, sectionId: { type: 'string', enum: ['top', 'story', 'speakers', 'journal', 'support', 'specifications', 'comparison'], description: 'Optional visible section to focus after navigation when that section exists on the destination. Use get_navigation_context to discover valid sections for the current destination.' } }, required: ['destination'], additionalProperties: false };
 const readOnly = { readOnlyHint: true, untrustedContentHint: false };
 const action = { readOnlyHint: false, untrustedContentHint: false };
 // Saved designs and validated builds include text authored by the signed-in user.
@@ -79,7 +79,7 @@ const responseSchemas: Record<string, Json> = {
   update_cart_quantity: { type: 'object', required: ['ok', 'productName', 'quantity', 'items', 'itemCount'] },
   remove_from_cart: { type: 'object', required: ['ok', 'removedProductName', 'items', 'itemCount'] },
   toggle_wishlist: { type: 'object', required: ['ok', 'productName', 'currentlyLiked', 'productNames'] },
-  get_navigation_context: { type: 'object', required: ['path', 'page', 'destinations'] },
+  get_navigation_context: { type: 'object', required: ['path', 'page', 'destinations', 'sections', 'navigationSchema'] },
   navigate_acoustom: { type: 'object', required: ['navigated', 'destination', 'path', 'userReviewHint'] },
 };
 
