@@ -61,9 +61,9 @@ export interface SimulationResult {
   };
   metrics: {
     rt60: number;
-    earlyDecayTime?: number;
-    clarity?: number;
-    definition?: number;
+    earlyDecayTime: number;
+    clarity: number;
+    definition: number;
   };
   frequencyResponse: Array<{ frequencyHz: number; gainDb: number }>;
   speakerPerformance: {

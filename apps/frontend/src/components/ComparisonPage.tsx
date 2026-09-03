@@ -24,6 +24,14 @@ import { deriveBuildData, STANDARD_SPEC_KEYS } from '../lib/customBuildDerivatio
 import { customBuildPrice } from '../lib/customBuildOptions';
 import { renderSimulatedWav } from '../lib/simulatedAudio';
 import { useAgentViewStore } from '../store/agentView';
+import {
+  DecayChart,
+  FrequencyChart,
+  ImpulseChart,
+  ModeChart,
+  modeFrequencies,
+  roomLabel,
+} from './SimulationInsights';
 type Props = {
   products: Product[];
   onBack: () => void;
@@ -44,7 +52,7 @@ type Speaker = {
   configuration?: CustomSpeakerConfiguration;
   profile?: Profile;
 };
-type AudioState = { status: string; url?: string };
+type AudioState = { status: string; url?: string; result?: SimulationResult };
 const room = { width: 5, length: 4, height: 2.7, presetId: 'living_room' },
   positions = [
     { x: 1.2, y: 0.8, z: 0.6, rotation: 15 },
@@ -95,6 +103,47 @@ function Player({ source, label }: { source?: string; label: string }) {
       </button>
       <span>{label}</span>
       <Volume2 size={15} />
+    </div>
+  );
+}
+function SpeakerSimulationData({
+  result,
+  speakerName,
+}: {
+  result: SimulationResult;
+  speakerName: string;
+}) {
+  const rt60 = result.metrics.rt60;
+  const character = roomLabel(rt60);
+  const firstMode = Math.min(...modeFrequencies(room).map((mode) => mode.value));
+  return (
+    <div className="matrix-simulation-data">
+      <div className="matrix-simulation-summary">
+        <div><strong>{rt60.toFixed(2)} s</strong><span>{character} decay</span></div>
+        <div><strong>{firstMode.toFixed(0)} Hz</strong><span>First room mode</span></div>
+      </div>
+      <p><strong>{speakerName}</strong> in your room</p>
+      <div className="matrix-simulation-metrics">
+        <div><span>Early decay</span><strong>{result.metrics.earlyDecayTime.toFixed(2)} s</strong></div>
+        <div><span>Clarity C80</span><strong>{result.metrics.clarity.toFixed(1)} dB</strong></div>
+        <div><span>Definition D50</span><strong>{(result.metrics.definition * 100).toFixed(0)}%</strong></div>
+      </div>
+      <div className="matrix-simulation-chart">
+        <span>Energy decay <small>modelled</small></span>
+        <DecayChart rt60={rt60} />
+      </div>
+      <div className="matrix-simulation-chart">
+        <span>Room modes <small>estimated</small></span>
+        <ModeChart room={room} />
+      </div>
+      <div className="matrix-simulation-chart">
+        <span>Frequency response <small>in-room gain</small></span>
+        <FrequencyChart points={result.frequencyResponse} />
+      </div>
+      <div className="matrix-simulation-chart">
+        <span>Impulse response <small>left + right</small></span>
+        <ImpulseChart urls={result.impulseResponses} />
+      </div>
     </div>
   );
 }
@@ -248,14 +297,16 @@ export default function ComparisonPage({ products, onBack }: Props) {
               signal: abort.signal,
             });
             if (!response.ok) throw Error();
-            setAudio((a) => ({ ...a, [s.id]: { status: 'Rendering audio…' } }));
-            const wav = await renderSimulatedWav(
-              track,
-              (await response.json()) as SimulationResult
-            );
+            const result = (await response.json()) as SimulationResult;
+            setAudio((a) => ({ ...a, [s.id]: { status: 'Rendering audio…', result } }));
+            const wav = await renderSimulatedWav(track, result);
             const url = URL.createObjectURL(wav);
             urls.push(url);
-            if (!dead) setAudio((a) => ({ ...a, [s.id]: { status: 'Ready', url } }));
+            if (!dead)
+              setAudio((a) => ({
+                ...a,
+                [s.id]: { status: 'Ready', url, result },
+              }));
           } catch {
             if (!dead && !abort.signal.aborted)
               setAudio((a) => ({ ...a, [s.id]: { status: 'Unavailable' } }));
@@ -352,16 +403,21 @@ export default function ComparisonPage({ products, onBack }: Props) {
           {cells((s, i) => (
             <div className="matrix-cell matrix-sound" key={i}>
               {s ? (
-                audio[s.id]?.url ? (
-                  <Player source={audio[s.id].url} label="Simulated response" />
-                ) : (
-                  <div className="matrix-status">
-                    {audio[s.id]?.status ??
-                      (s.profile || s.product
-                        ? 'Generating simulation…'
-                        : 'Deriving build profile…')}
-                  </div>
-                )
+                <>
+                  {audio[s.id]?.url ? (
+                    <Player source={audio[s.id].url} label="Simulated response" />
+                  ) : (
+                    <div className="matrix-status">
+                      {audio[s.id]?.status ??
+                        (s.profile || s.product
+                          ? 'Generating simulation…'
+                          : 'Deriving build profile…')}
+                    </div>
+                  )}
+                  {audio[s.id]?.result && (
+                    <SpeakerSimulationData result={audio[s.id].result} speakerName={s.name} />
+                  )}
+                </>
               ) : null}
             </div>
           ))}

@@ -322,14 +322,23 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     setState((current) => {
       const next = { ...current, ...(fields as unknown as Partial<typeof current>) };
       if (fields.format && !fields.platform)
-        next.platform = fields.format === 'subwoofer' ? 'subwoofer_active' : current.platform;
-      if (fields.platform && !fields.format)
+        next.platform =
+          fields.format === 'subwoofer'
+            ? 'subwoofer_active'
+            : current.platform === 'subwoofer_active'
+              ? fields.format === 'floorstanding'
+                ? 'two_way_extended'
+                : 'two_way_compact'
+              : current.platform;
+      if (fields.platform && !fields.format) {
         next.format =
           fields.platform === 'subwoofer_active'
             ? 'subwoofer'
-            : current.format === 'subwoofer'
-              ? 'standmount'
-              : current.format;
+            : fields.platform === 'two_way_extended'
+              ? 'floorstanding'
+              : 'standmount';
+      }
+      if (next.format !== 'standmount' && next.base === 'stand') next.base = 'slim_feet';
       return next;
     });
     setTouched((current) => {

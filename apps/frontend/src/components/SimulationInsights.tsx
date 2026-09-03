@@ -3,15 +3,15 @@ import type { RoomDimensions, SimulationResult } from '@acoustom/types';
 import { apiUrl } from '../lib/api';
 
 type Props = { result: SimulationResult | null; room: RoomDimensions; speakerName: string | null };
-const roomLabel = (rt60: number) =>
+export const roomLabel = (rt60: number) =>
   rt60 < 0.45 ? 'Controlled' : rt60 < 0.7 ? 'Balanced' : 'Lively';
-const modeFrequencies = (room: RoomDimensions) => [
+export const modeFrequencies = (room: RoomDimensions) => [
   { label: 'Width', value: 343 / (2 * room.width) },
   { label: 'Length', value: 343 / (2 * room.length) },
   { label: 'Height', value: 343 / (2 * room.height) },
 ];
 
-function DecayChart({ rt60, expanded = false }: { rt60: number; expanded?: boolean }) {
+export function DecayChart({ rt60, expanded = false }: { rt60: number; expanded?: boolean }) {
   const duration = Math.max(1.2, rt60 * 1.35);
   const points = Array.from(
     { length: 41 },
@@ -42,7 +42,7 @@ function DecayChart({ rt60, expanded = false }: { rt60: number; expanded?: boole
   );
 }
 
-function ModeChart({ room }: { room: RoomDimensions }) {
+export function ModeChart({ room }: { room: RoomDimensions }) {
   const modes = modeFrequencies(room);
   const max = 120;
   return (
@@ -73,7 +73,7 @@ function ModeChart({ room }: { room: RoomDimensions }) {
   );
 }
 
-function FrequencyChart({ points }: { points: SimulationResult['frequencyResponse'] }) {
+export function FrequencyChart({ points }: { points: SimulationResult['frequencyResponse'] }) {
   const max = Math.max(6, ...points.map((point) => Math.abs(point.gainDb)));
   const plotted = points.map((point) => {
     const x = ((Math.log10(point.frequencyHz) - Math.log10(20)) / 3) * 100;
@@ -83,7 +83,7 @@ function FrequencyChart({ points }: { points: SimulationResult['frequencyRespons
   return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Modelled frequency response" preserveAspectRatio="xMidYMid meet"><path className="chart-grid-line" d="M0 20H100M0 50H100M0 80H100" /><polyline className="chart-line" points={plotted} /><text x="2" y="98">20 Hz</text><text x="98" y="98" textAnchor="end">20 kHz</text></svg><span className="chart-axis-label chart-axis-left">+{max.toFixed(0)} dB</span><span className="chart-axis-label chart-axis-right">−{max.toFixed(0)} dB</span></div>;
 }
 
-function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) {
+export function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) {
   const [samples, setSamples] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;

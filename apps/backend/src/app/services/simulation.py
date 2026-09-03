@@ -50,6 +50,11 @@ class SimulationService:
                 directivity = pra.CardioidFamily(
                     pra.DirectionVector(speaker.rotation, degrees=True), 0.5
                 )
+            elif catalog_profile and catalog_profile.directivity_alpha is not None:
+                directivity = pra.CardioidFamily(
+                    pra.DirectionVector(speaker.rotation, degrees=True),
+                    catalog_profile.directivity_alpha,
+                )
             room.add_source([speaker.x, speaker.y, speaker.z], directivity=directivity)
         room.add_microphone([config.listener.x, config.listener.y, config.listener.z])
 

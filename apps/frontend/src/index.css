@@ -2901,6 +2901,87 @@ footer button {
 .comparison-redesign .matrix-sound {
   padding: 20px 16px;
 }
+.comparison-redesign .matrix-sound {
+  justify-content: flex-start;
+  gap: 18px;
+}
+.matrix-simulation-data {
+  width: 100%;
+  color: #eeeae2;
+}
+.matrix-simulation-summary,
+.matrix-simulation-metrics {
+  display: grid;
+  gap: 1px;
+  background: #514c45;
+}
+.matrix-simulation-summary {
+  grid-template-columns: 1fr 1fr;
+}
+.matrix-simulation-metrics {
+  grid-template-columns: 1fr;
+  margin: 12px 0 20px;
+}
+.matrix-simulation-summary > div,
+.matrix-simulation-metrics > div {
+  background: #38342f;
+  padding: 11px 9px;
+}
+.matrix-simulation-summary strong,
+.matrix-simulation-metrics strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 500;
+}
+.matrix-simulation-summary span,
+.matrix-simulation-metrics span,
+.matrix-simulation-data > p,
+.matrix-simulation-chart > span {
+  font: 9px 'DM Mono';
+  color: #c7c0b7;
+  text-transform: uppercase;
+}
+.matrix-simulation-data > p {
+  margin: 12px 0;
+  line-height: 1.5;
+}
+.matrix-simulation-data > p strong {
+  color: #f3f0e9;
+}
+.matrix-simulation-chart {
+  margin-top: 18px;
+}
+.matrix-simulation-chart > span {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.matrix-simulation-chart > span small {
+  color: #b9a083;
+  font-size: 8px;
+}
+.matrix-simulation-chart .insight-chart {
+  height: 112px;
+  border-color: #5a554e;
+}
+.matrix-simulation-chart .chart-grid-line {
+  stroke: #57524b;
+}
+.matrix-simulation-chart .chart-line,
+.matrix-simulation-chart .mode-line {
+  stroke: #d0a77e;
+}
+.matrix-simulation-chart .chart-marker,
+.matrix-simulation-chart .mode-axis {
+  stroke: #93877a;
+}
+.matrix-simulation-chart .chart-axis-label,
+.matrix-simulation-chart .mode-chart text,
+.matrix-simulation-chart .response-chart text {
+  color: #aaa299;
+  fill: #aaa299;
+  font-size: 7px;
+}
 .comparison-redesign .matrix-metric-row > .matrix-metric {
   gap: 10px;
   font-weight: 400;
