@@ -211,13 +211,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
     )
       setAgentSelection(ids, 'user');
   }, [slots, agentSelection, agentSelectionSource, setAgentSelection]);
-  const resolvedSlots = useMemo(
-    () =>
-      slots.map((slot) =>
-        slot ? (choices.find((choice) => choice.id === slot.id) ?? slot) : null
-      ),
-    [slots, choices]
-  );
+  const resolvedSlots = slots;
   const selected = useMemo(
     () => resolvedSlots.filter((speaker): speaker is Speaker => !!speaker),
     [resolvedSlots]
@@ -234,8 +228,6 @@ export default function ComparisonPage({ products, onBack }: Props) {
     setSlots((all) => all.map((x, n) => (n === i ? s : x)));
     setChooser(null);
   };
-  const available = (i: number) =>
-    choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.id === s.id));
   useEffect(() => {
     if (!selected.length && catalog[0]) setSlots([catalog[0], null, null, null, null]);
   }, [catalog, selected.length]);
@@ -440,7 +432,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
               </button>
             </header>
             <div className="speaker-modal-list">
-              {available(chooser).map((s) => (
+              {choices.map((s) => (
                 <button key={s.id} onClick={() => setSlot(chooser, s)}>
                   <img src={s.image} alt="" />
                   <span>
