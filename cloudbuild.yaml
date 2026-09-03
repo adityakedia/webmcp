@@ -12,6 +12,20 @@ steps:
       - cloudbuild
       - --publish
 
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - acoustomic
+      - --image
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/webmcp/acoustomic:$COMMIT_SHA"
+      - --region
+      - "${_REGION}"
+      - --platform
+      - managed
+      - --quiet
+
 substitutions:
   _REGION: asia-east1
 

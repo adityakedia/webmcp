@@ -67,22 +67,7 @@ export function useSimulation() {
               : `Simulation failed (${response.status})`;
         throw new Error(message);
       }
-      const payload = (await response.json()) as SimulationResult & {
-        metrics?: SimulationResult['metrics'] & {
-          early_decay_time?: number;
-          c80?: number;
-          d50?: number;
-        };
-      };
-      if (payload.metrics) {
-        payload.metrics = {
-          ...payload.metrics,
-          earlyDecayTime: payload.metrics.earlyDecayTime ?? payload.metrics.early_decay_time,
-          clarity: payload.metrics.clarity ?? payload.metrics.c80,
-          definition: payload.metrics.definition ?? payload.metrics.d50,
-        };
-      }
-      return payload;
+      return response.json() as Promise<SimulationResult>;
     },
     [listenerPosition, roomDimensions, selectedSpeakerId, speakerPositions]
   );
