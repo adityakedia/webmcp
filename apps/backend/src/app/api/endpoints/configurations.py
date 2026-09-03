@@ -24,6 +24,7 @@ router = APIRouter()
 
 class SaveConfiguration(BaseModel):
     configuration: CustomSpeakerConfiguration
+    preferences: dict | None = None
     expected_revision: int | None = None
     actor: str = "user"
 
@@ -33,6 +34,7 @@ def serialize(record: CustomSpeakerConfigurationRecord) -> dict:
         "id": record.id,
         "name": record.name,
         "configuration": {**record.configuration, "id": record.id},
+        "preferences": record.preferences,
         "revision": record.revision,
         "createdAt": record.created_at,
         "updatedAt": record.updated_at,
@@ -80,7 +82,7 @@ async def create_configuration(
     payload = body.configuration.model_dump(by_alias=True)
     payload.pop("id", None)
     record = CustomSpeakerConfigurationRecord(
-        owner_id=user.id, name=body.configuration.name, configuration=payload
+        owner_id=user.id, name=body.configuration.name, configuration=payload, preferences=body.preferences
     )
     db.add(record)
     await db.flush()
@@ -116,6 +118,7 @@ async def update_configuration(
     payload = body.configuration.model_dump(by_alias=True)
     payload.pop("id", None)
     record.configuration = payload
+    record.preferences = body.preferences
     record.name = body.configuration.name
     record.revision += 1
     db.add(

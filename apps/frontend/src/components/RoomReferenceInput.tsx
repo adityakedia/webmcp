@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import { ImagePlus, LoaderCircle } from 'lucide-react';
 import { apiUrl } from '../lib/api';
 import { useSimulationStore } from '../store/simulation';
+import type { ListeningPreferences } from '../lib/localBuilds';
 
-export default function RoomReferenceInput() {
+export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhotos?: NonNullable<ListeningPreferences['roomPhotos']> }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const references = useSimulationStore((state) => state.roomReferenceAssets);
   const setReferences = useSimulationStore((state) => state.setRoomReferenceAssets);
@@ -69,6 +70,11 @@ export default function RoomReferenceInput() {
               <figcaption>{reference.fileName}</figcaption>
             </figure>
           ))}
+        </div>
+      )}
+      {initialPhotos.length > 0 && (
+        <div className="room-reference-preview build-room-photos">
+          {initialPhotos.map((photo) => <figure key={`${photo.name}-${photo.dataUrl.slice(-12)}`}><img src={photo.dataUrl} alt={photo.name} /><figcaption>{photo.name}</figcaption></figure>)}
         </div>
       )}
     </section>

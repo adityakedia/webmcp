@@ -14,6 +14,7 @@ class CustomSpeakerConfigurationRecord(Base):
     )
     name = Column(String, nullable=False)
     configuration = Column(JSON, nullable=False)
+    preferences = Column(JSON, nullable=True)
     revision = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(

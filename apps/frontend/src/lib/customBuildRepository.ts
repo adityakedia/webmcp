@@ -8,6 +8,7 @@ type SavedConfiguration = {
   revision: number;
   name: string;
   configuration: CustomSpeakerConfiguration;
+  preferences?: LocalBuild['preferences'];
 };
 
 async function headers() {
@@ -42,6 +43,7 @@ export async function syncBuildToAccount(build: LocalBuild): Promise<LocalBuild>
       configuration: build.configuration,
       expectedRevision: build.revision,
       actor: 'user',
+      preferences: build.preferences,
     }),
   });
   if (!response.ok) throw new Error('Saving this build to your account failed');
@@ -52,6 +54,7 @@ export async function syncBuildToAccount(build: LocalBuild): Promise<LocalBuild>
     revision: saved.revision,
     configuration: saved.configuration,
     name: saved.name,
+    preferences: saved.preferences ?? build.preferences,
   };
 }
 
@@ -101,6 +104,7 @@ export async function hydrateBuildsFromAccount() {
       remoteId: remote.id,
       revision: remote.revision,
       name: remote.name,
+      preferences: remote.preferences,
       configuration: remote.configuration,
       derived: validated.derived,
       specs: validated.specs,

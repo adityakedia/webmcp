@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, Copy, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, Copy, MoreHorizontal, Plus, Trash2, X } from 'lucide-react';
 import type {
   CustomSpeakerConfiguration,
   AcousticPlatformId,
@@ -17,6 +17,7 @@ import {
   upsertLocalBuild,
   MAX_LOCAL_BUILDS,
   type LocalBuild,
+  type ListeningPreferences,
 } from '../lib/localBuilds';
 import { useAgentViewStore } from '../store/agentView';
 import {
@@ -92,6 +93,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
   const [activeBuildId, setActiveBuildId] = useState(initialBuild?.id ?? '');
   const [buildName, setBuildName] = useState(initialBuild?.name ?? 'Untitled 01');
   const [buildMenuOpen, setBuildMenuOpen] = useState(false);
+  const [preferences, setPreferences] = useState<ListeningPreferences>(initialBuild?.preferences ?? {});
   const panelRef = useRef<HTMLElement>(null);
   const [state, setState] = useState({
     format: initialBuild?.configuration.brief.format ?? 'standmount',
@@ -207,6 +209,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       ...build,
       name,
       configuration: { ...config, name },
+      preferences,
       updatedAt: new Date().toISOString(),
     };
     upsertLocalBuild(pending);
@@ -240,7 +243,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [config, buildName, activeBuildId, touched.length]);
+  }, [config, buildName, activeBuildId, touched.length, preferences]);
   const activateBuild = (id: string) => {
     const build = builds.find((item) => item.id === id);
     if (!build) return;
@@ -258,6 +261,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       finish: build.configuration.cabinet.finish,
       personalisation: build.configuration.personalisation.kind,
     });
+    setPreferences(build.preferences ?? {});
     setTouched(ALL_CATEGORIES);
     setStep(7);
   };
@@ -296,6 +300,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       { ...source.configuration, name: `${source.name} copy` },
       `${source.name} copy`
     );
+    copy.preferences = source.preferences;
     upsertLocalBuild(copy);
     setBuilds(readLocalBuilds()?.builds ?? []);
     setActiveBuildId(copy.id);
@@ -380,6 +385,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
             referenceName: platform.title,
           }}
           onBack={() => setStep(7)}
+          roomPhotos={preferences.roomPhotos ?? (preferences.roomPhoto ? [preferences.roomPhoto] : [])}
         />
       </main>
     );
@@ -528,45 +534,93 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
                 <div className="brief-question">
                   <span>When a track feels right, it is…</span>
                   <div className="brief-options">
-                    <div className="brief-option">
+                    <button className={`brief-option${preferences.soundProfile === 'warm' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, soundProfile: 'warm' }))}>
                       <span>Warm and easy</span>
                       <small>Rich, relaxed, forgiving</small>
-                    </div>
-                    <div className="brief-option">
+                    </button>
+                    <button className={`brief-option${preferences.soundProfile === 'balanced' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, soundProfile: 'balanced' }))}>
                       <span>Clear and natural</span>
                       <small>Honest, all-round listening</small>
-                    </div>
-                    <div className="brief-option">
+                    </button>
+                    <button className={`brief-option${preferences.soundProfile === 'immersive' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, soundProfile: 'immersive' }))}>
                       <span>Big and involving</span>
                       <small>Wide, energetic, room-filling</small>
-                    </div>
+                    </button>
                   </div>
                 </div>
                 <div className="brief-question">
                   <span>Your usual listening space is…</span>
                   <div className="brief-options">
-                    <div className="brief-option">
+                    <button className={`brief-option${preferences.roomSize === 'small' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, roomSize: 'small' }))}>
                       <span>Small and close</span>
                       <small>Bedroom, study, snug</small>
-                    </div>
-                    <div className="brief-option">
+                    </button>
+                    <button className={`brief-option${preferences.roomSize === 'medium' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, roomSize: 'medium' }))}>
                       <span>Everyday living room</span>
                       <small>The usual home setup</small>
-                    </div>
-                    <div className="brief-option">
+                    </button>
+                    <button className={`brief-option${preferences.roomSize === 'large' ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, roomSize: 'large' }))}>
                       <span>Open and spacious</span>
                       <small>More distance and air</small>
-                    </div>
+                    </button>
                   </div>
+                </div>
+                <div className="brief-question">
+                  <span>Your music benefits most from…</span>
+                  <div className="brief-options music-options">
+                    {[
+                      ['vocals-and-texture', 'Acoustic, vocal jazz', 'Hear voices, strings and fingers clearly'],
+                      ['rhythm-and-attack', 'Rock, funk, hip-hop', 'Keep drums and bass punchy and tight'],
+                      ['scale-and-depth', 'Classical, orchestral', 'Give large ensembles room and depth'],
+                      ['tonal-balance', 'Electronic, pop, mixed', 'Stay natural and even across styles'],
+                    ].map(([value, title, copy]) => (
+                      <button key={value} className={`brief-option${preferences.musicProfile === value ? ' selected' : ''}`} onClick={() => setPreferences((p) => ({ ...p, musicProfile: value }))}>
+                        <span>{title}</span><small>{copy}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="brief-question">
+                  <span>Room photo (optional)</span>
+                  <label className="room-photo-upload" htmlFor="room-photo">
+                    <span className="upload-plus">+</span>
+                    <span>{(preferences.roomPhotos?.length ?? (preferences.roomPhoto ? 1 : 0)) > 0 ? 'Add another room photo' : 'Add photos of your listening room'}</span>
+                    <small>{(preferences.roomPhotos?.length ?? (preferences.roomPhoto ? 1 : 0)) > 0 ? `${preferences.roomPhotos?.length ?? 1} photo${(preferences.roomPhotos?.length ?? 1) === 1 ? '' : 's'} saved to this build` : 'JPG, PNG or HEIC · up to 5 MB each'}</small>
+                  </label>
+                  <input className="visually-hidden" id="room-photo" type="file" accept="image/*" multiple onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    const validFiles = files.filter((file) => file.size <= 5 * 1024 * 1024);
+                    if (validFiles.length !== files.length) window.alert('Each photo must be smaller than 5 MB.');
+                    validFiles.forEach((file) => {
+                      const reader = new FileReader();
+                      reader.onload = () => setPreferences((p) => ({
+                        ...p,
+                        roomPhotos: [...(p.roomPhotos ?? (p.roomPhoto ? [p.roomPhoto] : [])), { name: file.name, type: file.type, dataUrl: String(reader.result) }],
+                        roomPhoto: undefined,
+                      }));
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value = '';
+                  }} />
+                  {(preferences.roomPhotos ?? (preferences.roomPhoto ? [preferences.roomPhoto] : [])).length > 0 && (
+                    <div className="room-photo-thumbnails" aria-label="Uploaded room photos">
+                      {(preferences.roomPhotos ?? (preferences.roomPhoto ? [preferences.roomPhoto] : [])).map((photo) => (
+                        <div className="room-photo-thumb" key={`${photo.name}-${photo.dataUrl.slice(-12)}`}>
+                          <img src={photo.dataUrl} alt={photo.name} title={photo.name} />
+                          <button type="button" aria-label={`Remove ${photo.name}`} onClick={() => setPreferences((p) => ({ ...p, roomPhotos: (p.roomPhotos ?? (p.roomPhoto ? [p.roomPhoto] : [])).filter((item) => item.dataUrl !== photo.dataUrl), roomPhoto: undefined }))}><X size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="brief-question">
                   <span>You would like the speaker to feel…</span>
                   <div className="brief-options two-up">
-                    <button onClick={() => chooseFormat('standmount')}>
+                    <button className={state.format === 'standmount' ? 'selected' : ''} onClick={() => chooseFormat('standmount')}>
                       <span>Discreet</span>
                       <small>Compact and easy to live with</small>
                     </button>
-                    <button onClick={() => chooseFormat('floorstanding')}>
+                    <button className={state.format === 'floorstanding' ? 'selected' : ''} onClick={() => chooseFormat('floorstanding')}>
                       <span>Confident</span>
                       <small>A more physical presence</small>
                     </button>

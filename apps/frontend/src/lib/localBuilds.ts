@@ -13,6 +13,15 @@ export type LocalBuild = {
   specs?: [string, string][];
   createdAt: string;
   updatedAt: string;
+  preferences?: ListeningPreferences;
+};
+export type ListeningPreferences = {
+  soundProfile?: 'warm' | 'balanced' | 'immersive';
+  roomSize?: 'small' | 'medium' | 'large';
+  musicProfile?: string;
+  roomPhotos?: Array<{ name: string; dataUrl: string; type: string }>;
+  /** Legacy single-photo value, read only for backwards compatibility. */
+  roomPhoto?: { name: string; dataUrl: string; type: string };
 };
 
 export type StoredBuilds = { activeBuildId: string; builds: LocalBuild[] };

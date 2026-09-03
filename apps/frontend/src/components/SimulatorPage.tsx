@@ -6,12 +6,14 @@ import { useAutoSimulation } from '../hooks/useAutoSimulation';
 import { useSimulationStore } from '../store/simulation';
 import SimulationInsights from './SimulationInsights';
 import RoomReferenceInput from './RoomReferenceInput';
+import type { ListeningPreferences } from '../lib/localBuilds';
 import RoomScene from './RoomScene';
 
 type Props = {
   products: Product[];
   onBack: () => void;
   customBuild?: { name: string; format: string; finish: string; referenceName: string } | null;
+  roomPhotos?: NonNullable<ListeningPreferences['roomPhotos']>;
   embedded?: boolean;
 };
 const presets = [
@@ -24,6 +26,7 @@ export default function SimulatorPage({
   products,
   onBack,
   customBuild = null,
+  roomPhotos = [],
   embedded = false,
 }: Props) {
   const selectedSpeakerId = useSimulationStore((state) => state.selectedSpeakerId);
@@ -207,7 +210,7 @@ export default function SimulatorPage({
               </button>
             ))}
           </div>
-          <RoomReferenceInput />
+          <RoomReferenceInput initialPhotos={roomPhotos} />
           <button className="refresh-room" onClick={retry}>
             <RotateCcw size={14} /> Refresh simulation
           </button>
