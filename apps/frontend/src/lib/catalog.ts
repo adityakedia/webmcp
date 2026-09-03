@@ -1,3 +1,5 @@
+import { apiUrl } from './api';
+
 export type CatalogProduct = {
   id: string;
   name: string;
@@ -11,7 +13,7 @@ export type CatalogProduct = {
 };
 
 export async function fetchCatalog(signal?: AbortSignal): Promise<CatalogProduct[]> {
-  const response = await fetch('/api/catalog', { signal, cache: 'no-store' });
+  const response = await fetch(apiUrl('/api/speakers/catalog'), { signal, cache: 'no-store' });
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`Catalog unavailable (${response.status}): ${detail || response.statusText}`);

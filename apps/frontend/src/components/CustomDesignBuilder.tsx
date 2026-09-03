@@ -60,6 +60,13 @@ const options = {
       price: 450,
       copy: 'Full-height cabinet with more scale.',
     },
+    {
+      id: 'subwoofer',
+      title: 'Subwoofer',
+      image: 'platform-subwoofer.png',
+      price: 0,
+      copy: 'Dedicated low-frequency cabinet.',
+    },
   ],
   platform: [
     {
@@ -366,6 +373,27 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
   ) => {
     setState((current) => ({ ...current, [key]: value }));
     setTouched((current) => (current.includes(category) ? current : [...current, category]));
+  };
+  const chooseFormat = (format: (typeof state)['format']) => {
+    setState((current) => ({
+      ...current,
+      format,
+      platform: format === 'subwoofer' ? 'subwoofer_active' : current.platform,
+    }));
+    setTouched((current) => (current.includes('format') ? current : [...current, 'format']));
+  };
+  const choosePlatform = (platform: AcousticPlatformId) => {
+    setState((current) => ({
+      ...current,
+      platform,
+      format:
+        platform === 'subwoofer_active'
+          ? 'subwoofer'
+          : current.format === 'subwoofer'
+            ? 'standmount'
+            : current.format,
+    }));
+    setTouched((current) => (current.includes('platform') ? current : [...current, 'platform']));
   };
   const platform = options.platform.find((item) => item.id === state.platform)!;
   const config = useMemo<CustomSpeakerConfiguration>(() => {
@@ -789,11 +817,11 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
                 <div className="brief-question">
                   <span>You would like the speaker to feel…</span>
                   <div className="brief-options two-up">
-                    <button onClick={() => choose('format', 'format', 'standmount')}>
+                    <button onClick={() => chooseFormat('standmount')}>
                       <span>Discreet</span>
                       <small>Compact and easy to live with</small>
                     </button>
-                    <button onClick={() => choose('format', 'format', 'floorstanding')}>
+                    <button onClick={() => chooseFormat('floorstanding')}>
                       <span>Confident</span>
                       <small>A more physical presence</small>
                     </button>
@@ -812,7 +840,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
                     key={item.id}
                     item={item}
                     selected={touched.includes('format') && state.format === item.id}
-                    onClick={() => choose('format', 'format', item.id)}
+                    onClick={() => chooseFormat(item.id)}
                   />
                 ))
               )}
@@ -824,7 +852,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
                     key={item.id}
                     item={item}
                     selected={touched.includes('platform') && state.platform === item.id}
-                    onClick={() => choose('platform', 'platform', item.id as AcousticPlatformId)}
+                    onClick={() => choosePlatform(item.id as AcousticPlatformId)}
                   />
                 ))
               )}

@@ -5,13 +5,15 @@ description: Recommend and compare Acoustom catalog speakers for a listener's ro
 
 # Acoustom speaker recommendation
 
-Use the Acoustom MCP tools as the source of truth for catalog facts and suitability. Start with `get_acoustom_workflow` only when the available tool set is unclear; otherwise use the smallest useful sequence.
+Use the Acoustom MCP tools as the source of truth for catalog facts and suitability. Start with `get_acoustom_overview` when the site or tool set is unfamiliar; otherwise use the smallest useful sequence.
 
 ## Gather the decision inputs
 
-Establish room size, listening preference, preferred format, and budget when they materially affect the recommendation. Ask only for unknown inputs that would change the outcome. A listening distance, placement constraints, or desire for active versus passive speakers may resolve a close choice.
+Establish room size, listening preference, preferred format, and budget in USD when they materially affect the recommendation. Ask only for unknown inputs that would change the outcome. A listening distance, placement constraints, or desire for active versus passive speakers may resolve a close choice.
 
-Use `recommend_speakers` to produce an initial ranking, then use `get_product` for finalists. Use `compare_speakers` only for two or three alternatives the user is genuinely considering. If the user supplies physical room dimensions and wants room-specific evidence, use `simulate_speaker_in_room` after selecting a candidate.
+If you already hold the user's listening habits or a playlist from outside Acoustom, record them with `set_music_preferences` so the reasoning and the visible page share the same context.
+
+Use `recommend_speakers` to produce an initial ranking, then use `get_product` for finalists. Move the user to a finalist with `navigate_acoustom` so they can read the same specifications you are citing. Hand off to the comparison skill once the user is weighing specific alternatives. If the user supplies physical room dimensions and wants room-specific evidence, use `simulate_speaker_in_room` after selecting a candidate.
 
 ## Explain the result
 
