@@ -310,9 +310,6 @@ export default function App() {
           </a>
           <button onClick={goCompare}>Compare</button>
           <button onClick={() => goSimulator()}>Listening lab</button>
-          <a href="#journal" onClick={goTo('journal')}>
-            Journal
-          </a>
           <button onClick={goCustom}>Custom design</button>
         </nav>
         <div className="nav-actions">
@@ -501,9 +498,6 @@ export default function App() {
               </a>
               <a href="#story" onClick={goTo('story')}>
                 Our story
-              </a>
-              <a href="#journal" onClick={goTo('journal')}>
-                Journal
               </a>
               <button onClick={goCustom}>Custom design</button>
             </div>
