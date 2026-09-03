@@ -26,14 +26,24 @@ export function useSimulation() {
           modelInputs?:
             | { alignment: 'sealed'; netVolumeLitres: number }
             | { alignment: 'ported'; netVolumeLitres: number; tuningHz: number };
+          acousticModifiers?: {
+            baffleStepDb: number;
+            grilleHighFrequencyTrimDb: number;
+            dampingLowFrequencyTrimDb: number;
+          };
         };
         if (profile.status === 'reference_ready')
-          config.speakerProfile = { status: 'reference_ready', referenceId: profile.referenceId };
+          config.speakerProfile = {
+            status: 'reference_ready',
+            referenceId: profile.referenceId,
+            acousticModifiers: profile.acousticModifiers,
+          };
         else if (profile.status === 'component_model_ready' && profile.modelInputs)
           config.speakerProfile = {
             status: 'component_model_ready',
             referenceId: profile.referenceId,
             modelInputs: profile.modelInputs,
+            acousticModifiers: profile.acousticModifiers,
           };
         else
           throw new Error('The custom build profile is incomplete. Rebuild it before simulating.');

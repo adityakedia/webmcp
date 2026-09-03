@@ -14,7 +14,7 @@ from app.schemas.custom_speaker import (
     RoomRecommendation,
     SimulationProfile,
 )
-from app.services.custom_speaker_catalog import REFERENCE_SYSTEMS
+from app.services.custom_speaker_catalog import ACOUSTIC_OPTION_PRESETS, REFERENCE_SYSTEMS
 from app.services.custom_speaker_specs import derive_product_specs
 
 router = APIRouter()
@@ -50,15 +50,38 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
     """Validate a customer configuration and return its platform-derived build."""
     architecture, roles = PLATFORM_SPECS[config.platform_id]
     reference = REFERENCE_SYSTEMS[config.platform_id]
+    size_preset = ACOUSTIC_OPTION_PRESETS["cabinet_size"][config.cabinet.size]
+    bass_preset = ACOUSTIC_OPTION_PRESETS["bass_character"][config.bass.bass_character]
+    grille_preset = ACOUSTIC_OPTION_PRESETS["grille"][config.cabinet.grille]
+    edge_preset = ACOUSTIC_OPTION_PRESETS["edge_profile"][config.cabinet.edge_profile]
+    reference_volume = config.bass.net_volume_litres or reference.get("net_volume_litres") or 18
+    net_volume_litres = round(reference_volume * size_preset["volume_factor"], 1)
+    port_tuning_hz = (
+        None
+        if config.bass.alignment == "sealed"
+        else round(
+            (config.bass.tuning_hz or reference.get("port_tuning_hz") or 36)
+            + bass_preset["ported_tuning_offset_hz"],
+            1,
+        )
+    )
+    damping_mass_g = reference.get("damping_mass_g")
+    damping_description = config.bass.damping_description or reference.get("damping_description")
     matches_alignment = config.bass.alignment == reference["alignment"]
     matches_tuning = (
-        reference["port_tuning_hz"] is None or config.bass.tuning_hz == reference["port_tuning_hz"]
+        reference["port_tuning_hz"] is None or port_tuning_hz == reference["port_tuning_hz"]
     )
     matches_format = config.brief.format == reference["format"] if "format" in reference else True
-    matches_volume = config.bass.net_volume_litres == reference.get("net_volume_litres")
+    matches_volume = net_volume_litres == reference.get("net_volume_litres")
     matches_port = config.bass.port_inner_diameter_mm == reference.get(
         "port_inner_diameter_mm"
     ) and config.bass.port_length_mm == reference.get("port_length_mm")
+    matches_response_modifiers = (
+        config.cabinet.size == "compact"
+        and config.bass.bass_character == "balanced"
+        and edge_preset["baffle_step_db"] == 0
+        and grille_preset["grille_high_frequency_trim_db"] == 0
+    )
     profile_ready = (
         reference["simulation_eligibility"] == "reference_ready"
         and matches_alignment
@@ -66,12 +89,13 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
         and matches_format
         and matches_volume
         and matches_port
+        and matches_response_modifiers
     )
     # Every valid builder configuration must be usable by the simulator. A
     # component model is the deterministic fallback for unmeasured systems.
     component_model_ready = (
-        config.bass.net_volume_litres is not None
-        and (config.bass.alignment == "sealed" or config.bass.tuning_hz is not None)
+        net_volume_litres is not None
+        and (config.bass.alignment == "sealed" or port_tuning_hz is not None)
     )
     warnings = [
         "Acoustic response, sensitivity and impedance require the selected drivers, net "
@@ -79,7 +103,16 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
     ]
     simulated_changes = ["room geometry", "room absorption", "speaker and listener position"]
     if component_model_ready:
-        simulated_changes.extend(["net enclosure volume", "bass alignment", "port tuning"])
+        simulated_changes.extend(
+            [
+                "net enclosure volume",
+                "bass alignment",
+                "port tuning",
+                "baffle step",
+                "grille high-frequency trim",
+                "damping low-frequency trim",
+            ]
+        )
     measurement_required_for = [
         "driver substitution",
         "net volume",
@@ -100,11 +133,17 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
             drivers=[DriverSpecification(role=role) for role in roles],
             acoustic_design=AcousticDesign(
                 alignment=config.bass.alignment,
-                port_tuning_hz=config.bass.tuning_hz,
-                net_volume_litres=config.bass.net_volume_litres,
+                port_tuning_hz=port_tuning_hz,
+                net_volume_litres=net_volume_litres,
                 port_inner_diameter_mm=config.bass.port_inner_diameter_mm,
                 port_length_mm=config.bass.port_length_mm,
-                damping_description=config.bass.damping_description,
+                damping_description=damping_description,
+                damping_mass_g=damping_mass_g,
+                baffle_width_mm=size_preset["baffle_width_mm"],
+                baffle_height_mm=size_preset["baffle_height_mm"],
+                baffle_step_db=edge_preset["baffle_step_db"],
+                grille_high_frequency_trim_db=grille_preset["grille_high_frequency_trim_db"],
+                crossover_preset=f'{config.platform_id}_published_crossover',
                 bass_character=config.bass.bass_character,
                 voicing_target=config.brief.sound_profile,
                 measurement_status="requires_driver_and_crossover_validation",
@@ -140,16 +179,21 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
                 max_spl_db=reference["max_spl_db"],
                 crossover_hz=reference["crossover_hz"],
                 model_inputs=(
-                    {"alignment": "sealed", "net_volume_litres": config.bass.net_volume_litres}
+                    {"alignment": "sealed", "net_volume_litres": net_volume_litres}
                     if component_model_ready and config.bass.alignment == "sealed"
                     else {
                         "alignment": "ported",
-                        "net_volume_litres": config.bass.net_volume_litres,
-                        "tuning_hz": config.bass.tuning_hz,
+                        "net_volume_litres": net_volume_litres,
+                        "tuning_hz": port_tuning_hz,
                     }
                     if component_model_ready
                     else None
                 ),
+                acoustic_modifiers={
+                    "baffle_step_db": edge_preset["baffle_step_db"],
+                    "grille_high_frequency_trim_db": grille_preset["grille_high_frequency_trim_db"],
+                    "damping_low_frequency_trim_db": bass_preset["damping_low_frequency_trim_db"],
+                },
                 model_type=reference["model_type"],
                 source_assets=reference["source_assets"],
                 simulated_changes=simulated_changes,

@@ -21,6 +21,7 @@ REFERENCE_SYSTEMS = {
         "port_inner_diameter_mm": 50.0,
         "port_length_mm": 200.0,
         "damping_description": "150 g Acousto-Q, distributed away from the port",
+        "damping_mass_g": 150.0,
         "format": "standmount",
         "component_model": "mimir",
         "simulation_eligibility": "reference_ready",
@@ -160,5 +161,30 @@ REFERENCE_SYSTEMS = {
                 "description": "Published kit dimensions and DSP crossover range",
             },
         ],
+    },
+}
+
+# These are controlled mappings for the IDs already offered by the builder. They
+# are deliberately estimates: they make each acoustic choice traceable without
+# presenting a new cabinet as a completed-system measurement.
+ACOUSTIC_OPTION_PRESETS = {
+    "cabinet_size": {
+        "compact": {"volume_factor": 1.0, "baffle_width_mm": 210, "baffle_height_mm": 360},
+        "standard": {"volume_factor": 1.15, "baffle_width_mm": 230, "baffle_height_mm": 420},
+        "large": {"volume_factor": 1.3, "baffle_width_mm": 250, "baffle_height_mm": 500},
+    },
+    "bass_character": {
+        "tight": {"ported_tuning_offset_hz": 3, "damping_low_frequency_trim_db": -0.75},
+        "balanced": {"ported_tuning_offset_hz": 0, "damping_low_frequency_trim_db": 0},
+        "extended": {"ported_tuning_offset_hz": -3, "damping_low_frequency_trim_db": 0.75},
+    },
+    "grille": {
+        "none": {"grille_high_frequency_trim_db": 0},
+        "magnetic_fabric": {"grille_high_frequency_trim_db": -0.5},
+        "perforated_metal": {"grille_high_frequency_trim_db": -1.0},
+    },
+    "edge_profile": {
+        "soft_radius": {"baffle_step_db": 0},
+        "sculpted_radius": {"baffle_step_db": 0.5},
     },
 }

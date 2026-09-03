@@ -65,6 +65,31 @@ def apply_mimir_transfer(rir: np.ndarray, sample_rate: int) -> np.ndarray:
     return np.fft.irfft(np.fft.rfft(rir) * transfer, n=fft_size).real
 
 
+def apply_acoustic_modifiers(
+    rir: np.ndarray,
+    sample_rate: int,
+    *,
+    baffle_step_db: float = 0,
+    grille_high_frequency_trim_db: float = 0,
+    damping_low_frequency_trim_db: float = 0,
+) -> np.ndarray:
+    """Apply restrained response adjustments resolved from fixed builder options.
+
+    These are broad shelves, not a claim of measured completed-speaker response.
+    """
+    fft_size = len(rir)
+    frequencies = np.fft.rfftfreq(fft_size, 1 / sample_rate)
+    baffle_weight = 1 / (1 + (frequencies / 700) ** 2)
+    damping_weight = 1 / (1 + (frequencies / 180) ** 2)
+    grille_weight = 1 / (1 + (4000 / np.maximum(frequencies, 1)) ** 4)
+    adjustment_db = (
+        baffle_step_db * baffle_weight
+        + damping_low_frequency_trim_db * damping_weight
+        + grille_high_frequency_trim_db * grille_weight
+    )
+    return np.fft.irfft(np.fft.rfft(rir) * 10 ** (adjustment_db / 20), n=fft_size).real
+
+
 def mimir_sealed_box_transfer_function(
     sample_rate: int, fft_size: int, net_volume_litres: float
 ) -> tuple[np.ndarray, np.ndarray]:

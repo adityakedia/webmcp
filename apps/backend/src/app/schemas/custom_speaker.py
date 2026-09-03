@@ -139,6 +139,12 @@ class AcousticDesign(CustomSpeakerModel):
     port_inner_diameter_mm: float | None = None
     port_length_mm: float | None = None
     damping_description: str | None = None
+    damping_mass_g: float | None = None
+    baffle_width_mm: float | None = None
+    baffle_height_mm: float | None = None
+    baffle_step_db: float = 0
+    grille_high_frequency_trim_db: float = 0
+    crossover_preset: str
     bass_character: Literal["tight", "balanced", "extended"]
     voicing_target: SoundProfile
     measurement_status: Literal["requires_driver_and_crossover_validation"]
@@ -173,6 +179,7 @@ class SimulationProfile(CustomSpeakerModel):
     max_spl_db: float | None = None
     crossover_hz: list[float]
     model_inputs: "BoxModelInputs | None" = None
+    acoustic_modifiers: "AcousticModifiers" = Field(default_factory=lambda: AcousticModifiers())
     model_type: Literal[
         "published_system_response", "component_response_model", "requires_measurement"
     ]
@@ -212,6 +219,14 @@ class PortedBoxModelInputs(CustomSpeakerModel):
 
 
 BoxModelInputs = SealedBoxModelInputs | PortedBoxModelInputs
+
+
+class AcousticModifiers(CustomSpeakerModel):
+    """Small, deterministic response adjustments resolved from builder choices."""
+
+    baffle_step_db: float = Field(default=0, ge=-6, le=6)
+    grille_high_frequency_trim_db: float = Field(default=0, ge=-6, le=0)
+    damping_low_frequency_trim_db: float = Field(default=0, ge=-3, le=3)
 
 
 class CustomSpeakerBuild(CustomSpeakerConfiguration):

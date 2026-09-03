@@ -50,6 +50,7 @@ export interface SimulationSpeakerProfile {
   status: 'reference_ready' | 'component_model_ready';
   referenceId: AcousticPlatformId;
   modelInputs?: { alignment: 'sealed'; netVolumeLitres: number } | { alignment: 'ported'; netVolumeLitres: number; tuningHz: number };
+  acousticModifiers?: { baffleStepDb: number; grilleHighFrequencyTrimDb: number; dampingLowFrequencyTrimDb: number };
 }
 
 export interface SimulationResult {

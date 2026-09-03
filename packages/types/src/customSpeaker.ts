@@ -83,6 +83,12 @@ export interface DerivedSpeakerSpecifications {
     portInnerDiameterMm?: number;
     portLengthMm?: number;
     dampingDescription?: string;
+    dampingMassG?: number;
+    baffleWidthMm?: number;
+    baffleHeightMm?: number;
+    baffleStepDb: number;
+    grilleHighFrequencyTrimDb: number;
+    crossoverPreset: string;
     bassCharacter: BassConfiguration['bassCharacter'];
     voicingTarget: SoundProfile;
     measurementStatus: 'requires_driver_and_crossover_validation';
@@ -112,6 +118,7 @@ export interface DerivedSpeakerSpecifications {
     maxSplDb?: number;
     crossoverHz: number[];
     modelInputs?: { alignment: 'sealed'; netVolumeLitres: number } | { alignment: 'ported'; netVolumeLitres: number; tuningHz: number };
+    acousticModifiers: { baffleStepDb: number; grilleHighFrequencyTrimDb: number; dampingLowFrequencyTrimDb: number };
     modelType: 'published_system_response' | 'component_response_model' | 'requires_measurement';
     sourceAssets: Array<{
       kind: 'system_response' | 'driver_response' | 'impedance' | 'crossover' | 'cabinet';

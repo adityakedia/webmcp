@@ -90,7 +90,7 @@ async def test_create_custom_speaker_returns_derived_build():
     assert body["derived"]["acousticDesign"]["portTuningHz"] == 42
     assert body["derived"]["physicalBuild"]["finish"] == "walnut"
     assert body["derived"]["roomRecommendation"]["listeningDistanceM"] == 2.5
-    assert body["derived"]["simulationProfile"]["status"] == "reference_ready"
+    assert body["derived"]["simulationProfile"]["status"] == "component_model_ready"
     assert body["derived"]["simulationProfile"]["referenceId"] == "two_way_compact"
     assert body["derived"]["simulationProfile"]["referenceName"] == "SEAS Mimir"
     assert body["derived"]["simulationProfile"]["modelType"] == "component_response_model"
@@ -145,6 +145,32 @@ async def test_changed_mimir_ported_tuning_releases_estimated_component_model():
 
 
 @pytest.mark.asyncio
+async def test_builder_acoustic_choices_resolve_to_specs_and_simulation_modifiers():
+    payload = build_payload()
+    payload["cabinet"].update(
+        size="large", grille="perforated_metal", edgeProfile="sculpted_radius"
+    )
+    payload["bass"]["bassCharacter"] = "extended"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/custom-speakers/", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()
+    acoustic = body["derived"]["acousticDesign"]
+    assert acoustic["netVolumeLitres"] == 18.2
+    assert acoustic["portTuningHz"] == 39
+    assert acoustic["baffleWidthMm"] == 250
+    assert acoustic["grilleHighFrequencyTrimDb"] == -1
+    assert acoustic["baffleStepDb"] == 0.5
+    assert acoustic["dampingMassG"] == 150
+    assert body["derived"]["simulationProfile"]["acousticModifiers"] == {
+        "baffleStepDb": 0.5,
+        "grilleHighFrequencyTrimDb": -1,
+        "dampingLowFrequencyTrimDb": 0.75,
+    }
+
+
+@pytest.mark.asyncio
 async def test_sealed_mimir_build_releases_component_model_with_volume_input():
     payload = build_payload()
     payload["bass"]["alignment"] = "sealed"
@@ -159,7 +185,7 @@ async def test_sealed_mimir_build_releases_component_model_with_volume_input():
 
 
 @pytest.mark.asyncio
-async def test_cosmetic_changes_preserve_verified_acoustic_reference_profile():
+async def test_response_affecting_grille_releases_component_model():
     payload = build_payload()
     payload["cabinet"].update(
         finish="satin_white", finishFamily="paint", grille="perforated_metal"
@@ -172,7 +198,7 @@ async def test_cosmetic_changes_preserve_verified_acoustic_reference_profile():
         response = await client.post("/api/custom-speakers/", json=payload)
 
     assert response.status_code == 201
-    assert response.json()["derived"]["simulationProfile"]["status"] == "reference_ready"
+    assert response.json()["derived"]["simulationProfile"]["status"] == "component_model_ready"
 
 
 @pytest.mark.asyncio
@@ -180,6 +206,7 @@ async def test_seas_403_reference_configuration_is_simulation_ready():
     payload = build_payload()
     payload["brief"]["format"] = "standmount"
     payload["platformId"] = "three_way_reference"
+    payload["cabinet"]["grille"] = "none"
     payload["bass"].update(
         tuningHz=30,
         netVolumeLitres=44,

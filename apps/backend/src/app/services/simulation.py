@@ -9,6 +9,7 @@ from scipy.signal import butter, sosfilt
 from app.core.config import settings
 from app.schemas.simulation import SimulationRequest
 from app.services.component_transfer import (
+    apply_acoustic_modifiers,
     apply_aphel_transfer,
     apply_mimir_ported_box_transfer,
     apply_mimir_sealed_box_transfer,
@@ -63,7 +64,11 @@ class SimulationService:
                 "id": config.speakerProfile.referenceId,
                 "name": REFERENCE_SYSTEMS[config.speakerProfile.referenceId]["name"],
                 "modelType": "custom_reference_profile",
-                "measurementStatus": "measurement_backed",
+                "measurementStatus": (
+                    "measurement_backed"
+                    if config.speakerProfile.status == "reference_ready"
+                    else "specification_based"
+                ),
                 "frequencyRangeHz": REFERENCE_SYSTEMS[config.speakerProfile.referenceId]["frequency_range_hz"],
                 "sensitivityDb": REFERENCE_SYSTEMS[config.speakerProfile.referenceId]["sensitivity_db"],
                 "note": "Uses the selected custom reference or component model.",
@@ -110,6 +115,21 @@ class SimulationService:
                 frequency_range = reference["frequency_range_hz"]
                 rir_left = self._apply_speaker_bandwidth(rir_left, fs, frequency_range)
                 rir_right = self._apply_speaker_bandwidth(rir_right, fs, frequency_range)
+            modifiers = config.speakerProfile.acousticModifiers
+            rir_left = apply_acoustic_modifiers(
+                rir_left,
+                fs,
+                baffle_step_db=modifiers.baffleStepDb,
+                grille_high_frequency_trim_db=modifiers.grilleHighFrequencyTrimDb,
+                damping_low_frequency_trim_db=modifiers.dampingLowFrequencyTrimDb,
+            )
+            rir_right = apply_acoustic_modifiers(
+                rir_right,
+                fs,
+                baffle_step_db=modifiers.baffleStepDb,
+                grille_high_frequency_trim_db=modifiers.grilleHighFrequencyTrimDb,
+                damping_low_frequency_trim_db=modifiers.dampingLowFrequencyTrimDb,
+            )
         elif catalog_profile:
             rir_left = apply_catalog_transfer(rir_left, fs, catalog_profile)
             rir_right = apply_catalog_transfer(rir_right, fs, catalog_profile)

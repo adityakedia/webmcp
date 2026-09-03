@@ -49,12 +49,19 @@ class PortedBoxModelInputs(BaseModel):
     tuningHz: float = Field(ge=24, le=65)
 
 
+class AcousticModifiers(BaseModel):
+    baffleStepDb: float = Field(default=0, ge=-6, le=6)
+    grilleHighFrequencyTrimDb: float = Field(default=0, ge=-6, le=0)
+    dampingLowFrequencyTrimDb: float = Field(default=0, ge=-3, le=3)
+
+
 class SimulationSpeakerProfile(BaseModel):
     status: Literal["reference_ready", "component_model_ready"]
     referenceId: Literal[
         "two_way_compact", "two_way_extended", "three_way_reference", "subwoofer_active"
     ]
     modelInputs: SealedBoxModelInputs | PortedBoxModelInputs | None = None
+    acousticModifiers: AcousticModifiers = Field(default_factory=AcousticModifiers)
 
     @model_validator(mode="after")
     def reference_is_eligible_for_simulation(self):
