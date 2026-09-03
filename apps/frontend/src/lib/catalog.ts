@@ -13,7 +13,7 @@ export type CatalogProduct = {
 };
 
 export async function fetchCatalog(signal?: AbortSignal): Promise<CatalogProduct[]> {
-  const response = await fetch(apiUrl('/api/speakers/catalog'), { signal, cache: 'no-store' });
+  const response = await fetch(apiUrl('/api/catalog'), { signal, cache: 'no-store' });
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`Catalog unavailable (${response.status}): ${detail || response.statusText}`);

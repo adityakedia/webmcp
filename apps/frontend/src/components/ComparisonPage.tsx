@@ -21,6 +21,7 @@ import type { Product } from '../App';
 import { apiUrl } from '../lib/api';
 import { readLocalBuilds, type LocalBuild } from '../lib/localBuilds';
 import { renderSimulatedWav } from '../lib/simulatedAudio';
+import { useAgentViewStore } from '../store/agentView';
 type Props = {
   products: Product[];
   onBack: () => void;
@@ -188,6 +189,28 @@ export default function ComparisonPage({ products, onBack }: Props) {
   ]);
   const [chooser, setChooser] = useState<number | null>(null);
   const [audio, setAudio] = useState<Record<string, AudioState>>({});
+  const agentSelection = useAgentViewStore((state) => state.comparisonSelection);
+  const agentSelectionSource = useAgentViewStore((state) => state.comparisonSelectionSource);
+  const setAgentSelection = useAgentViewStore((state) => state.setComparisonSelection);
+  useEffect(() => {
+    if (agentSelectionSource !== 'agent' || !choices.length) return;
+    const next = (agentSelection.length ? agentSelection : [choices[0]?.id ?? ''])
+      .map((id) => choices.find((choice) => choice.id === id) ?? null)
+      .concat(Array(Math.max(0, 5 - agentSelection.length)).fill(null))
+      .slice(0, 5) as (Speaker | null)[];
+    setSlots(next);
+    setAgentSelection(agentSelection, 'user');
+  }, [agentSelection, agentSelectionSource, choices, setAgentSelection]);
+  useEffect(() => {
+    if (!slots.length) return;
+    const ids = slots.filter((slot): slot is Speaker => !!slot).map((slot) => slot.id);
+    if (
+      agentSelectionSource === 'user' &&
+      ids.length &&
+      ids.join('|') !== agentSelection.join('|')
+    )
+      setAgentSelection(ids, 'user');
+  }, [slots, agentSelection, agentSelectionSource, setAgentSelection]);
   const resolvedSlots = useMemo(
     () =>
       slots.map((slot) =>
@@ -212,7 +235,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
     setChooser(null);
   };
   const available = (i: number) =>
-    choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.id === s.id));
+    choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.name === s.name));
   useEffect(() => {
     if (!selected.length && catalog[0]) setSlots([catalog[0], null, null, null, null]);
   }, [catalog, selected.length]);
@@ -326,7 +349,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
           </i>
         </div>
       </header>
-      <section className="comparison-matrix" ref={matrixRef as any}>
+      <section className="comparison-matrix" id="comparison" ref={matrixRef as any}>
         <div className="matrix-row matrix-speaker-row">
           <div className="matrix-head">
             <span>Speakers</span>
@@ -418,7 +441,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
             </header>
             <div className="speaker-modal-list">
               {available(chooser).map((s) => (
-                <button key={s.id} onClick={() => setSlot(chooser, s)}>
+                <button key={`${s.type}:${s.name}`} onClick={() => setSlot(chooser, s)}>
                   <img src={s.image} alt="" />
                   <span>
                     <strong>{s.name}</strong>

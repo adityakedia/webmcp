@@ -123,7 +123,11 @@ export default function App() {
         ? ['top', 'story', 'speakers', 'journal', 'support']
         : page === 'compare'
           ? ['top', 'comparison']
-          : ['top'];
+          : page === 'listening_lab'
+            ? ['top', 'room', 'simulation']
+            : page === 'custom_design'
+              ? ['top']
+              : ['top'];
     const navigationSchema = {
       destinations: {
         home: { path: '/', sections: ['top', 'story', 'speakers', 'journal', 'support'] },
@@ -132,12 +136,36 @@ export default function App() {
           pathPattern: '/speakers/:productSlug',
           sections: ['top', 'specifications'],
           requires: ['productName'],
+          accepts: ['productName'],
         },
-        compare: { path: '/compare', sections: ['top', 'comparison'] },
-        listening_lab: { path: '/simulator', sections: ['top'] },
-        custom_design: { path: '/custom-design', sections: ['top'] },
+        compare: {
+          path: '/compare',
+          sections: ['top', 'comparison'],
+          accepts: ['productNames', 'sectionId'],
+        },
+        listening_lab: {
+          path: '/simulator',
+          sections: ['top', 'room', 'simulation'],
+          accepts: ['speakerName', 'trackId', 'sectionId'],
+        },
+        custom_design: {
+          path: '/custom-design',
+          sections: ['top'],
+          accepts: ['buildId'],
+        },
       },
-      actions: ['get_navigation_context', 'navigate_acoustom'],
+      actions: [
+        'get_navigation_context',
+        'navigate_acoustom',
+        'get_user_context',
+        'set_comparison_selection',
+        'set_listening_lab_speaker',
+        'set_reference_track',
+        'set_music_preferences',
+        'attach_room_reference_images',
+        'refresh_room_simulation',
+        'get_live_simulation_result',
+      ],
     };
     return {
       path: location.pathname,
@@ -154,6 +182,10 @@ export default function App() {
     destination,
     productName,
     sectionId,
+    productNames,
+    buildId,
+    speakerName,
+    trackId,
   }: NavigationRequest): NavigationResult => {
     let path = '/';
     let reviewHint = 'The user can review the collection and choose a product.';
@@ -163,7 +195,7 @@ export default function App() {
       catalog: ['top', 'speakers', 'journal'],
       product_detail: ['top', 'specifications'],
       compare: ['top', 'comparison'],
-      listening_lab: ['top'],
+      listening_lab: ['top', 'room', 'simulation'],
       custom_design: ['top'],
     };
     if (sectionId && !sectionMap[destination].includes(sectionId))
@@ -186,17 +218,25 @@ export default function App() {
       setDetail(null);
       setCustomOpen(false);
       path = '/compare';
-      reviewHint = 'The user can now review the speaker comparison.';
+      const count = (productNames?.catalogProductNames?.length ?? 0) + (productNames?.customBuildIds?.length ?? 0);
+      reviewHint = count
+        ? `The user can now review the ${count}-column comparison the agent loaded.`
+        : 'The user can now review the speaker comparison.';
     } else if (destination === 'listening_lab') {
       setDetail(null);
       setCustomOpen(false);
       path = '/simulator';
-      reviewHint = 'The user can now adjust room controls and review the listening simulation.';
+      const parts = ['the listening simulation'];
+      if (speakerName) parts.push(`selected speaker ${speakerName}`);
+      if (trackId) parts.push(`reference track ${trackId}`);
+      reviewHint = `The user can now review ${parts.join(' with ')}.`;
     } else if (destination === 'custom_design') {
       setDetail(null);
       setCustomOpen(true);
       path = '/custom-design';
-      reviewHint = 'The user can now review and edit the custom speaker design.';
+      reviewHint = buildId
+        ? `The user can now review the saved custom build ${buildId}.`
+        : 'The user can now review and edit the custom speaker design.';
     } else {
       setDetail(null);
       setCustomOpen(false);
@@ -204,9 +244,20 @@ export default function App() {
     }
     navigate(path);
     window.setTimeout(() => {
-      if (sectionId && sectionId !== 'top')
-        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      else window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (sectionId && sectionId !== 'top') {
+        if (sectionId === 'room')
+          document.getElementById('room')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else if (sectionId === 'simulation')
+          document
+            .getElementById('simulation')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else if (sectionId === 'comparison') {
+          document
+            .getElementById('comparison')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else
+          document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 50);
     return {
       navigated: true,
@@ -214,6 +265,10 @@ export default function App() {
       path,
       ...(productName ? { productName } : {}),
       ...(sectionId ? { sectionId } : {}),
+      ...(productNames ? { productNames } : {}),
+      ...(buildId ? { buildId } : {}),
+      ...(speakerName ? { speakerName } : {}),
+      ...(trackId ? { trackId } : {}),
       userReviewHint: reviewHint,
     };
   };

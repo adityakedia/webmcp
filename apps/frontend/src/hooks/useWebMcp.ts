@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
-import type { CustomSpeakerConfiguration } from '@acoustom/types';
+import type { CustomSpeakerConfiguration, SimulationResult } from '@acoustom/types';
 import { apiUrl } from '../lib/api';
 import { generateBuildSheet } from '../lib/buildSheet';
 import { getSharedSimulatedAudio } from '../lib/simulatedAudio';
+import { acoustomOverview, acoustomSkills } from '../lib/agentBriefing';
 import { useSimulationStore } from '../store/simulation';
+import { useAgentViewStore, MAX_COMPARISON_SLOTS } from '../store/agentView';
+import { validateBuild } from '../lib/customBuildRepository';
 import {
   readLocalBuilds,
   upsertLocalBuild,
@@ -13,6 +16,7 @@ import {
 } from '../lib/localBuilds';
 
 type Product = {
+  id: string;
   name: string;
   type: string;
   price: string;
@@ -22,12 +26,25 @@ type Product = {
   specs: [string, string][];
 };
 export type CartItem = { productName: string; quantity: number };
+export type ComparisonProductNames = {
+  catalogProductNames?: string[];
+  customBuildIds?: string[];
+};
 export type NavigationDestination =
-  'home' | 'catalog' | 'product_detail' | 'compare' | 'listening_lab' | 'custom_design';
+  | 'home'
+  | 'catalog'
+  | 'product_detail'
+  | 'compare'
+  | 'listening_lab'
+  | 'custom_design';
 export type NavigationRequest = {
   destination: NavigationDestination;
   productName?: string;
   sectionId?: string;
+  productNames?: ComparisonProductNames;
+  buildId?: string;
+  speakerName?: string;
+  trackId?: string;
 };
 export type NavigationResult = {
   navigated: true;
@@ -35,6 +52,10 @@ export type NavigationResult = {
   path: string;
   productName?: string;
   sectionId?: string;
+  productNames?: ComparisonProductNames;
+  buildId?: string;
+  speakerName?: string;
+  trackId?: string;
   userReviewHint: string;
 };
 type Json = Record<string, unknown>;
@@ -73,6 +94,12 @@ const productInput = {
   required: ['productName'],
   additionalProperties: false,
 };
+const productNamesInput = {
+  type: 'array',
+  minItems: 1,
+  maxItems: MAX_COMPARISON_SLOTS,
+  items: { type: 'string', minLength: 1, maxLength: 128 },
+};
 const navigationInput: Json = {
   type: 'object',
   properties: {
@@ -86,13 +113,63 @@ const navigationInput: Json = {
       minLength: 1,
       maxLength: 128,
       description:
-        'Required only when destination is product_detail. Must be a catalog product name.',
+        'Required when destination is product_detail. Must be a catalog product name.',
     },
     sectionId: {
       type: 'string',
-      enum: ['top', 'story', 'speakers', 'journal', 'support', 'specifications', 'comparison'],
+      enum: [
+        'top',
+        'story',
+        'speakers',
+        'journal',
+        'support',
+        'specifications',
+        'comparison',
+        'room',
+        'simulation',
+      ],
       description:
         'Optional visible section to focus after navigation when that section exists on the destination. Use get_navigation_context to discover valid sections for the current destination.',
+    },
+    productNames: {
+      type: 'object',
+      description:
+        'Optional comparison selection to load in the same call. catalogProductNames and customBuildIds are kept in their respective slots.',
+      properties: {
+        catalogProductNames: {
+          type: 'array',
+          minItems: 0,
+          maxItems: MAX_COMPARISON_SLOTS,
+          items: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+        customBuildIds: {
+          type: 'array',
+          minItems: 0,
+          maxItems: MAX_COMPARISON_SLOTS,
+          items: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+      },
+      additionalProperties: false,
+    },
+    buildId: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 128,
+      description:
+        'Local build id to open in the custom design builder (destination must be custom_design).',
+    },
+    speakerName: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 128,
+      description:
+        'Speaker to select in the listening lab (destination must be listening_lab). Use the catalog name or "custom-reference" for the active custom build.',
+    },
+    trackId: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 64,
+      description: 'Reference track to load in the listening lab (destination listening_lab).',
     },
   },
   required: ['destination'],
@@ -253,9 +330,8 @@ const roomEstimateInput: Json = {
       additionalProperties: false,
     },
   },
-  required: ['width', 'length', 'height', 'presetId', 'speakerPositions', 'listener'],
   description:
-    'Best-effort room estimate derived collaboratively from a user-provided image. These values are editable and do not claim physical measurement precision.',
+    'Best-effort room estimate derived collaboratively from a user-provided image. speakerPositions and listener are optional when only dimensions are known; Acoustom fills sensible defaults.',
 };
 
 // Mirrors CustomSpeakerConfiguration at POST /api/custom-speakers/ (camelCase API boundary).
@@ -363,10 +439,65 @@ const customBuildInput: Json = {
   required: ['name', 'brief', 'platformId', 'bass', 'cabinet', 'personalisation'],
 };
 
+const referenceTracks: Array<{ id: string; name: string; detail: string; url: string }> = [
+  {
+    id: 'piano',
+    name: 'Piano study',
+    detail: 'Natural dynamics',
+    url: '/wav/sample-15s.wav',
+  },
+  {
+    id: 'voice',
+    name: 'Vocal detail',
+    detail: 'Midrange focus',
+    url: '/wav/sample-3s.wav',
+  },
+  {
+    id: 'electronic',
+    name: 'Electronic bass',
+    detail: 'Low-frequency extension',
+    url: '/wav/audio-track-cy-14.mp3',
+  },
+  {
+    id: 'ambient',
+    name: 'Ambient texture',
+    detail: 'Space and decay',
+    url: '/wav/freesound_community-harddrive-2tb-failure-71691.mp3',
+  },
+  {
+    id: 'keys',
+    name: 'Keyboard bass',
+    detail: 'Transient response',
+    url: '/wav/Casio-CTK-611-Touch-Bass-C2.wav',
+  },
+];
+
 // WebMCP's current standard does not register outputSchema. Keep output
 // contracts discoverable here; backend references are generated by FastAPI's
 // OpenAPI document, so they cannot drift from the service responses.
 const responseSchemas: Record<string, Json> = {
+  get_acoustom_overview: { type: 'object', required: ['site', 'pages', 'capabilities'] },
+  list_acoustom_skills: {
+    type: 'array',
+    items: { type: 'object', required: ['name', 'description', 'whenToUse', 'tools'] },
+  },
+  get_acoustom_skill: {
+    type: 'object',
+    required: ['name', 'description', 'whenToUse', 'tools', 'instructions'],
+  },
+  list_webmcp_tools: {
+    type: 'array',
+    items: { type: 'object', required: ['name', 'title', 'annotations', 'category'] },
+  },
+  get_webmcp_tool_contract: {
+    type: 'object',
+    required: ['name', 'inputSchema', 'responseSchema'],
+  },
+  get_user_context: {
+    type: 'object',
+    required: ['path', 'page', 'comparisonSelection', 'listeningLab', 'customBuilder'],
+  },
+  get_acoustom_workflow: { type: 'object', required: ['version', 'agentProtocol', 'workflows'] },
   list_products: {
     type: 'array',
     items: { type: 'object', required: ['name', 'type', 'price', 'tone', 'category'] },
@@ -375,14 +506,55 @@ const responseSchemas: Record<string, Json> = {
     type: 'object',
     required: ['name', 'type', 'price', 'tone', 'category', 'description', 'specs'],
   },
+  recommend_speakers: { type: 'object', required: ['recommendations'] },
   compare_speakers: {
-    type: 'array',
-    items: { type: 'object', required: ['name', 'type', 'price', 'specifications'] },
+    type: 'object',
+    required: ['columns'],
+  },
+  set_comparison_selection: {
+    type: 'object',
+    required: ['selection', 'selectionSource'],
   },
   get_room_simulation_presets: {
     type: 'array',
     items: { type: 'object', required: ['id', 'name', 'description'] },
   },
+  list_reference_tracks: {
+    type: 'array',
+    items: { type: 'object', required: ['id', 'name', 'detail', 'url'] },
+  },
+  set_reference_track: {
+    type: 'object',
+    required: ['ok', 'referenceTrackRequest', 'activeReferenceTrackLabel'],
+  },
+  set_music_preferences: {
+    type: 'object',
+    required: ['ok', 'musicPreferences'],
+  },
+  attach_room_reference_images: {
+    type: 'object',
+    required: ['ok', 'references', 'guidance'],
+  },
+  get_room_estimate_contract: { type: 'object', required: ['inputSchema', 'guidance'] },
+  apply_agent_room_estimate: {
+    type: 'object',
+    required: ['applied', 'room', 'assumptions', 'confidence'],
+  },
+  get_current_room_spec: { type: 'object', required: ['room', 'speakerPositions', 'listener'] },
+  get_live_simulation_result: {
+    type: 'object',
+    required: ['status'],
+  },
+  set_listening_lab_speaker: {
+    type: 'object',
+    required: ['ok', 'selectedSpeakerId', 'source'],
+  },
+  refresh_room_simulation: {
+    type: 'object',
+    required: ['ok', 'selectedSpeakerId'],
+  },
+  get_room_reference_images: { type: 'object', required: ['references', 'guidance'] },
+  get_shared_simulated_audio: { type: 'object', required: ['audioUrl', 'mimeType', 'expiresAt'] },
   get_custom_speaker_builder_options: {
     $ref: '/openapi.json#/components/schemas/CustomSpeakerCatalogResponse',
   },
@@ -402,18 +574,6 @@ const responseSchemas: Record<string, Json> = {
     type: 'object',
     required: ['filename', 'mimeType', 'imageDataUrl', 'build', 'pricing'],
   },
-  get_shared_simulated_audio: { type: 'object', required: ['audioUrl', 'mimeType', 'expiresAt'] },
-  get_room_reference_images: { type: 'object', required: ['references', 'guidance'] },
-  get_room_estimate_contract: { type: 'object', required: ['inputSchema', 'guidance'] },
-  apply_agent_room_estimate: {
-    type: 'object',
-    required: ['applied', 'room', 'assumptions', 'confidence'],
-  },
-  get_current_room_spec: { type: 'object', required: ['room', 'speakerPositions', 'listener'] },
-  simulate_speaker_in_room: { $ref: '/openapi.json#/components/schemas/SimulationResponse' },
-  simulate_custom_speaker_in_room: { $ref: '/openapi.json#/components/schemas/SimulationResponse' },
-  get_acoustom_workflow: { type: 'object', required: ['version', 'agentProtocol', 'workflows'] },
-  recommend_speakers: { type: 'object', required: ['recommendations'] },
   list_saved_custom_configurations: { type: 'object', required: ['configurations'] },
   get_saved_custom_configuration: {
     type: 'object',
@@ -423,9 +583,12 @@ const responseSchemas: Record<string, Json> = {
     type: 'object',
     required: ['id', 'configuration', 'revision', 'pricing'],
   },
-  delete_saved_custom_configuration: { type: 'object', required: ['ok', 'deletedConfigurationId'] },
+  delete_saved_custom_configuration: {
+    type: 'object',
+    required: ['ok', 'deletedConfigurationId'],
+  },
   list_local_builds: { type: 'object', required: ['builds', 'activeBuildId'] },
-  save_local_build: { type: 'object', required: ['ok', 'buildId', 'name'] },
+  save_local_build: { type: 'object', required: ['ok', 'buildId', 'name', 'configuration', 'derived'] },
   delete_local_build: { type: 'object', required: ['ok', 'deletedBuildId', 'deletedName'] },
   rename_local_build: { type: 'object', required: ['ok', 'buildId', 'name'] },
   get_cart: { type: 'object', required: ['items', 'itemCount'] },
@@ -454,6 +617,8 @@ const responseSchemas: Record<string, Json> = {
     type: 'object',
     required: ['navigated', 'destination', 'path', 'userReviewHint'],
   },
+  simulate_speaker_in_room: { $ref: '/openapi.json#/components/schemas/SimulationResponse' },
+  simulate_custom_speaker_in_room: { $ref: '/openapi.json#/components/schemas/SimulationResponse' },
 };
 
 function finite(value: unknown, name: string): number {
@@ -473,6 +638,55 @@ async function apiJson(response: Response, operation: string): Promise<unknown> 
   throw new Error(`${operation} failed: ${detail}`);
 }
 
+const TOOL_CATEGORIES: Record<string, string> = {
+  get_acoustom_overview: 'orientation',
+  list_acoustom_skills: 'orientation',
+  get_acoustom_skill: 'orientation',
+  get_acoustom_workflow: 'orientation',
+  list_webmcp_tools: 'orientation',
+  get_webmcp_tool_contract: 'orientation',
+  get_user_context: 'shared_view',
+  get_navigation_context: 'shared_view',
+  navigate_acoustom: 'shared_view',
+  list_products: 'catalog',
+  get_product: 'catalog',
+  recommend_speakers: 'catalog',
+  compare_speakers: 'comparison',
+  set_comparison_selection: 'comparison',
+  get_room_simulation_presets: 'room',
+  get_room_estimate_contract: 'room',
+  attach_room_reference_images: 'room',
+  get_room_reference_images: 'room',
+  apply_agent_room_estimate: 'room',
+  get_current_room_spec: 'room',
+  simulate_speaker_in_room: 'simulation',
+  simulate_custom_speaker_in_room: 'simulation',
+  set_listening_lab_speaker: 'simulation',
+  refresh_room_simulation: 'simulation',
+  get_live_simulation_result: 'simulation',
+  list_reference_tracks: 'listening',
+  set_reference_track: 'listening',
+  set_music_preferences: 'listening',
+  get_shared_simulated_audio: 'listening',
+  get_custom_speaker_builder_options: 'custom_build',
+  validate_custom_speaker_build: 'custom_build',
+  generate_custom_build_sheet: 'custom_build',
+  list_local_builds: 'build_library',
+  save_local_build: 'build_library',
+  rename_local_build: 'build_library',
+  delete_local_build: 'build_library',
+  list_saved_custom_configurations: 'account_designs',
+  get_saved_custom_configuration: 'account_designs',
+  save_custom_configuration: 'account_designs',
+  delete_saved_custom_configuration: 'account_designs',
+  get_cart: 'bag_and_wishlist',
+  get_wishlist: 'bag_and_wishlist',
+  add_to_cart: 'bag_and_wishlist',
+  update_cart_quantity: 'bag_and_wishlist',
+  remove_from_cart: 'bag_and_wishlist',
+  toggle_wishlist: 'bag_and_wishlist',
+};
+
 /** Imperative WebMCP registration; the app remains usable when the API is unavailable. */
 export function useWebMcp(options: Options): void {
   const latest = useRef(options);
@@ -487,6 +701,11 @@ export function useWebMcp(options: Options): void {
       typeof name === 'string'
         ? latest.current.products.find((item) => item.name.toLowerCase() === name.toLowerCase())
         : undefined;
+    const findCustomProfile = (buildId: string) => {
+      const stored = readLocalBuilds();
+      const build = stored?.builds.find((item) => item.id === buildId);
+      return build?.derived?.simulationProfile ?? null;
+    };
     const authenticatedHeaders = async () => {
       const token = await latest.current.getAccessToken();
       if (!token)
@@ -522,6 +741,76 @@ export function useWebMcp(options: Options): void {
         : { speakers: speakerPositions, listener };
     const tools: Tool[] = [
       {
+        name: 'get_acoustom_overview',
+        title: 'Get Acoustom site overview',
+        description:
+          'Returns what Acoustom is, what the agent can do here, what the platform deliberately does not do, the page map, and the capability-to-tool mapping. The first call for any new session.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () => acoustomOverview,
+      },
+      {
+        name: 'list_acoustom_skills',
+        title: 'List Acoustom skills',
+        description:
+          'Returns every skill available to the agent in this session: a one-line description, when to load it, and the tool names it expects the agent to call. Use get_acoustom_skill to read the full instructions for a single skill.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () =>
+          acoustomSkills.map(({ name, description, whenToUse, tools }) => ({
+            name,
+            description,
+            whenToUse,
+            tools,
+          })),
+      },
+      {
+        name: 'get_acoustom_skill',
+        title: 'Get an Acoustom skill',
+        description:
+          'Returns the full instructions for a single Acoustom skill by name. Load a specialised skill before running a workflow it owns; load acoustom-guided-discovery for broad or combined requests.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              enum: acoustomSkills.map((skill) => skill.name),
+            },
+          },
+          required: ['name'],
+          additionalProperties: false,
+        },
+        annotations: readOnly,
+        execute: ({ name }) => {
+          const skill = acoustomSkills.find((candidate) => candidate.name === name);
+          if (!skill) throw new Error(`Unknown skill: ${String(name)}`);
+          return skill;
+        },
+      },
+      {
+        name: 'list_webmcp_tools',
+        title: 'List registered WebMCP tools',
+        description:
+          'Returns every tool this WebMCP host has registered, grouped by capability. Use get_webmcp_tool_contract to inspect a single tool’s full input and response schema before calling it.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () => {
+          const groups: Record<string, Array<{ name: string; title: string; annotations: Json }>> = {};
+          tools.forEach((tool) => {
+            const category = TOOL_CATEGORIES[tool.name] ?? 'other';
+            groups[category] = groups[category] ?? [];
+            groups[category].push({
+              name: tool.name,
+              title: tool.title,
+              annotations: tool.annotations,
+            });
+          });
+          return Object.entries(groups).flatMap(([category, members]) =>
+            members.map((tool) => ({ ...tool, category }))
+          );
+        },
+      },
+      {
         name: 'get_webmcp_tool_contract',
         title: 'Get a WebMCP tool contract',
         description:
@@ -540,8 +829,50 @@ export function useWebMcp(options: Options): void {
           if (!tool) throw new Error(`Registered tool unavailable: ${toolName}`);
           return {
             name: tool.name,
+            title: tool.title,
             inputSchema: tool.inputSchema,
             responseSchema: responseSchemas[toolName],
+          };
+        },
+      },
+      {
+        name: 'get_user_context',
+        title: 'Get the live user context',
+        description:
+          'Returns the live state of the user’s view: the visible page, the comparison selection, the listening lab’s selected speaker, room and current simulation, the active custom build, music preferences, and the bag. Read this first when returning to a session or before a handoff.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () => {
+          const nav = latest.current.getNavigationContext() as Json;
+          const view = useAgentViewStore.getState();
+          const sim = useSimulationStore.getState();
+          return {
+            ...nav,
+            comparisonSelection: view.comparisonSelection,
+            comparisonSelectionSource: view.comparisonSelectionSource,
+            listeningLab: {
+              selectedSpeakerId: sim.selectedSpeakerId,
+              room: sim.roomDimensions,
+              speakerPositions: [sim.speakerPositions.left, sim.speakerPositions.right],
+              listener: sim.listenerPosition,
+              simulationStatus: sim.simulationStatus,
+              hasResult: !!sim.simulationResult,
+            },
+            customBuilder: {
+              requestedBuildId: view.requestedCustomBuildId,
+              musicPreferences: view.musicPreferences,
+            },
+            referenceTrack: {
+              activeLabel: view.activeReferenceTrackLabel,
+              requestedTrackId: view.referenceTrackRequest?.sampleId ?? null,
+            },
+            bag: {
+              items: latest.current.getCart(),
+              itemCount: latest.current.getCart().reduce((sum, item) => sum + item.quantity, 0),
+              wishlist: latest.current.getLiked(),
+            },
+            guidance:
+              'Use comparisonSelection.list to know which speakers the user is looking at. Use listeningLab.hasResult to know whether the simulation in the lab is up to date; call refresh_room_simulation or set_listening_lab_speaker if not.',
           };
         },
       },
@@ -549,37 +880,46 @@ export function useWebMcp(options: Options): void {
         name: 'get_acoustom_workflow',
         title: 'Get Acoustom workflow guide',
         description:
-          'Returns the recommended agent workflows, tool order, purpose, and the output fields to carry to each next step. An agent without prior context should call this first.',
+          'Returns the four objective-aligned agent workflows (recommend, compare, custom build, integrated guided discovery), their tool order, purpose, and the output fields to carry to each next step, plus same-view navigation rules. An agent without prior context should call this after get_acoustom_overview.',
         inputSchema: noArgs,
         annotations: readOnly,
         execute: () => ({
-          version: 2,
+          version: 3,
           agentProtocol: {
             firstTurn: [
-              'Identify the user’s room size or dimensions, listening preference, preferred format, and budget when relevant.',
-              'Ask only for missing details that could change the recommendation; do not fabricate them.',
-              'Use tool results as the source of truth for catalog facts and suitability evidence.',
-              'Give one primary recommendation and a clearly labelled alternative when useful.',
-              'Offer to navigate the relevant result into view so the user can review or edit it.',
+              'Call get_user_context to see what the user’s view already holds, and get_acoustom_overview when the site or tool set is unfamiliar.',
+              'Identify the user’s room (size or dimensions), listening preference, preferred format, and budget in USD when they would change the answer.',
+              'Ask only for missing inputs that would change the recommendation; never fabricate them.',
+              'Use tool results as the source of truth for catalog facts, pricing, specifications, and simulation output.',
+              'Keep the visible page on whatever you are working on; call navigate_acoustom with the relevant destination and context (productNames, buildId, speakerName, trackId) so the user sees the same view.',
+              'Label every claim as catalog fact, suitability reason, or simulated evidence. Give one primary recommendation, one alternative with its trade-off, and name the evidence you could not obtain.',
             ],
             evidenceLabels: {
               catalogFact: 'Directly returned by list_products or get_product.',
               suitabilityReason: 'Derived by recommend_speakers from the stated requirements.',
-              simulatedEvidence: 'Returned by a room simulation and dependent on its assumptions.',
+              simulatedEvidence:
+                'Returned by a room simulation or the listening lab and dependent on its assumptions.',
             },
             completion:
-              'A recommendation is complete when the user has a primary choice, trade-off or alternative, supporting catalog facts, and any important missing evidence or assumptions stated.',
+              'A recommendation is complete when the user has a primary choice, a trade-off or alternative, supporting catalog facts, and any important missing evidence or assumptions stated.',
+            sameViewRule:
+              'Whenever the user and the agent both need to be looking at the same thing — a comparison set, a listening-lab simulation, a custom build, a reference track — call navigate_acoustom (or the dedicated set_* tool) before describing it. After navigation, invite the user to review or change the visible controls; navigation is not consent.',
           },
           workflows: [
             {
-              id: 'catalogue_research',
+              id: 'recommend_for_user',
               purpose:
-                'Recommend, inspect, compare and test catalog speakers for stated room and listening requirements.',
+                'Recommend a small number of catalog speakers for the user’s room, taste, format, and budget, then bring the page to the chosen candidate.',
               steps: [
+                {
+                  tool: 'get_user_context',
+                  useOutput:
+                    'Use bag.wishlist, listeningLab.room, customBuilder.musicPreferences, and comparisonSelection to recognise the user’s current state without asking again.',
+                },
                 {
                   tool: 'recommend_speakers',
                   requiredInputs: ['roomSize', 'soundProfile'],
-                  optionalInputs: ['preferredFormat', 'budgetEur', 'feedback'],
+                  optionalInputs: ['preferredFormat', 'budgetUsd', 'feedback'],
                   useOutput:
                     'Use ranked product names and stated matching reasons. Do not call with empty requirements.',
                 },
@@ -589,36 +929,60 @@ export function useWebMcp(options: Options): void {
                     'Use complete details and specifications for the top candidate and any serious alternative.',
                 },
                 {
-                  tool: 'compare_speakers',
-                  optional: true,
-                  useOutput:
-                    'Compare two or three selected products only when the user is deciding between them.',
-                },
-                {
-                  tool: 'simulate_speaker_in_room',
-                  optional: true,
-                  precondition:
-                    'The user supplied known room dimensions, or an estimate was explicitly accepted.',
-                  useOutput:
-                    'Return in-room frequency response, impulse-response URLs, RT60, assumptions, and profile provenance.',
-                },
-                {
                   tool: 'navigate_acoustom',
-                  optional: true,
                   useOutput:
-                    'Show the product, comparison, or listening-lab context for user review.',
+                    'Show the top candidate on its product page (destination: product_detail, productName).',
                 },
               ],
               constraints: [
                 'If room size, listening preference, or another material requirement is unknown, ask the user before ranking.',
                 'Do not treat the ranking score as a measured acoustic result.',
-                'Do not claim that a simulation proves the speaker is best; it only evaluates the selected assumptions.',
+                'Budget is USD per pair; use budgetUsd, not budgetEur.',
+              ],
+            },
+            {
+              id: 'compare_candidates',
+              purpose:
+                'Compare two to five speakers side by side in the visible comparison matrix, optionally with matched room-simulation evidence, and summarise them against the user’s stated requirements.',
+              steps: [
+                {
+                  tool: 'get_user_context',
+                  useOutput:
+                    'Reuse comparisonSelection as the starting set. Use list_local_builds to discover custom build ids when including them.',
+                },
+                {
+                  tool: 'compare_speakers',
+                  optionalInputs: ['includeSimulation'],
+                  useOutput:
+                    'Each column is one speaker with its specifications. With includeSimulation:true the same room and source profile are used for every column.',
+                },
+                {
+                  tool: 'set_comparison_selection OR navigate_acoustom(productNames)',
+                  useOutput:
+                    'Make the comparison the user is looking at. navigate_acoustom with destination: compare and productNames loads the matrix in one call; set_comparison_selection does the same without moving the page.',
+                },
+                {
+                  tool: 'navigate_acoustom',
+                  useOutput:
+                    'If the user is not already on the comparison page, send them there with destination: compare and the productNames so the same columns are on screen.',
+                },
+                {
+                  tool: 'simulate_speaker_in_room | simulate_custom_speaker_in_room',
+                  optional: true,
+                  useOutput:
+                    'When the user wants room-specific evidence rather than a spec table, simulate each column in the same room so RT60 and frequency response are like for like.',
+                },
+              ],
+              constraints: [
+                'Do not mix simulation runs from different rooms and present the numbers as a like-for-like comparison.',
+                'Prices are USD per pair. A custom build price is the configured component total from validation, not a catalog price; say so when comparing it against catalog models.',
+                'A custom build only carries specifications once it has been validated; if a column is missing specs, revalidate the build before comparing.',
               ],
             },
             {
               id: 'custom_build_simulation',
               purpose:
-                'Validate a curated custom speaker, generate an accurate catalog sheet, and simulate its returned engineering profile.',
+                'Validate a curated custom speaker, generate a build sheet, simulate its returned engineering profile in the user’s room, and refine the build in response to feedback.',
               steps: [
                 {
                   tool: 'get_custom_speaker_builder_options',
@@ -627,7 +991,7 @@ export function useWebMcp(options: Options): void {
                 {
                   tool: 'validate_custom_speaker_build',
                   useOutput:
-                    'Pass the entire returned build as build to simulate_custom_speaker_in_room.',
+                    'Pass the entire returned build as build to simulate_custom_speaker_in_room, and as configuration to save_local_build / save_custom_configuration.',
                 },
                 {
                   tool: 'get_current_room_spec',
@@ -645,10 +1009,80 @@ export function useWebMcp(options: Options): void {
                   useOutput:
                     'Pass only build to simulate against the live listening-lab room specification. Supply room fields only to intentionally override it. Return impulse-response URLs and RT60.',
                 },
+                {
+                  tool: 'save_local_build OR save_custom_configuration',
+                  useOutput:
+                    'save_local_build validates and stores derived specs for browser-local persistence; save_custom_configuration is for durable account-backed designs and uses optimistic revision control.',
+                },
+                {
+                  tool: 'navigate_acoustom',
+                  useOutput:
+                    'Open the build for the user with destination: custom_design and buildId; follow up with destination: listening_lab to show its in-room simulation.',
+                },
               ],
               constraints: [
                 'If a room image estimate was applied, call get_current_room_spec or rely on the live room state; do not reconstruct its dimensions or layout from memory.',
                 'State whether the simulation used live room inputs or explicit overrides.',
+                'Treat personalisation as subject to design review when warnings or its status say so.',
+              ],
+            },
+            {
+              id: 'integrated_guided_discovery',
+              purpose:
+                'Take the user from a blank brief to an informed decision across catalog, comparison, custom build, and simulation in one session, with the visible page tracking every step.',
+              steps: [
+                {
+                  tool: 'get_user_context + get_acoustom_overview',
+                  useOutput:
+                    'Recognise the existing state. Decide which skill to load (acoustom-guided-discovery is the entry point).',
+                },
+                {
+                  tool: 'get_acoustom_skill(name: acoustom-guided-discovery)',
+                  useOutput:
+                    'Adopt the discovery protocol: brief, then bring outside context in, then run the work where the user can see it.',
+                },
+                {
+                  tool: 'set_music_preferences',
+                  optional: true,
+                  useOutput:
+                    'When the user supplied listening habits or a playlist from outside Acoustom, store the summary so the reasoning and the visible page share the same context.',
+                },
+                {
+                  tool: 'attach_room_reference_images + apply_agent_room_estimate',
+                  optional: true,
+                  useOutput:
+                    'Translate user-provided room photos or floor plans into editable Listening Lab dimensions, preset, and layout. State assumptions and confidence.',
+                },
+                {
+                  tool: 'recommend_speakers + get_product',
+                  useOutput: 'Shortlist the catalog.',
+                },
+                {
+                  tool: 'set_comparison_selection + navigate_acoustom(productNames)',
+                  useOutput: 'Load the shortlist into the visible comparison matrix.',
+                },
+                {
+                  tool: 'simulate_speaker_in_room',
+                  optional: true,
+                  useOutput:
+                    'Run the shortlist through the user’s room; mix the simulated results with the spec table only when they came from the same room.',
+                },
+                {
+                  tool: 'validate_custom_speaker_build + save_local_build + simulate_custom_speaker_in_room',
+                  optional: true,
+                  useOutput:
+                    'When the user wants a custom alternative, add a build to the comparison set, then simulate it in the same room and summarise why the custom build does or does not help.',
+                },
+                {
+                  tool: 'navigate_acoustom',
+                  useOutput:
+                    'Keep the visible page on whichever view the user is being asked to reason about. Always include context (productNames, buildId, speakerName, trackId) so the user sees the same thing you do.',
+                },
+              ],
+              constraints: [
+                'Stage only what serves the user’s question. Skip the custom build when the catalog already fits; skip simulation when the user only wants a spec sheet.',
+                'Close with a single primary recommendation, one alternative with its trade-off, the supporting evidence, and the missing evidence you could not obtain.',
+                'Acoustom has no checkout, payment, or order flow. The bag and wishlist are browser-local; never describe add_to_cart or toggle_wishlist as a purchase.',
               ],
             },
             {
@@ -657,136 +1091,39 @@ export function useWebMcp(options: Options): void {
                 'Return a playable, browser-rendered room-simulation WAV after the user has explicitly approved sharing their source track.',
               steps: [
                 {
+                  tool: 'set_reference_track',
+                  useOutput: 'Make sure the listening lab is using a track that represents the user’s music.',
+                },
+                {
                   tool: 'simulate_speaker_in_room | simulate_custom_speaker_in_room',
                   useOutput: 'The browser uses the returned impulse responses to render its audio.',
                 },
                 {
                   tool: 'get_shared_simulated_audio',
                   useOutput:
-                    'Returns the temporary playable WAV URL, MIME type, and expiry after the user clicks Share with agent.',
+                    'Returns the temporary playable WAV URL, MIME type, and expiry after the user clicks Share with agent in the listening lab.',
                 },
               ],
               constraints: [
                 'Never claim that an impulse-response URL is a rendered music track.',
-                'If get_shared_simulated_audio reports no asset, ask the user to select a track and click Share with agent in the listening lab.',
+                'If get_shared_simulated_audio reports no asset, ask the user to choose Share with agent in the listening lab.',
                 'The audio URL is temporary and represents user-authorized content.',
-              ],
-            },
-            {
-              id: 'room_image_collaboration',
-              purpose:
-                'Translate user-provided room images into an editable, best-effort simulation proposal and procedural Listening Lab room.',
-              steps: [
-                {
-                  tool: 'get_room_reference_images',
-                  optional: true,
-                  useOutput:
-                    'When references are present, inspect each temporary image URL before estimating. For images directly attached in the agent conversation, inspect those attachments instead.',
-                },
-                {
-                  tool: 'get_room_estimate_contract',
-                  useOutput: 'Follow the exact accepted fields and collaborative guidance.',
-                },
-                {
-                  tool: 'apply_agent_room_estimate',
-                  useOutput:
-                    'Populates the browser room controls and procedural room view; the user can then refine placement before listening.',
-                },
-              ],
-              constraints: [
-                'Listening Lab uploads are user-approved temporary room references for this agent. Direct agent attachments are equally valid input.',
-                'State assumptions and confidence; image-derived dimensions are estimates, not measurements.',
-                'Ask for a known reference measurement when it would materially improve the estimate.',
-                'Never claim a procedural room view is a literal reconstruction of the uploaded image.',
-              ],
-            },
-            {
-              id: 'refine_saved_build',
-              purpose:
-                'Load an existing build, alter it in response to user feedback, revalidate its engineering profile, simulate it, and save the next revision.',
-              steps: [
-                {
-                  tool: 'list_saved_custom_configurations | get_saved_custom_configuration',
-                  useOutput: 'Use configuration and revision from the saved design.',
-                },
-                {
-                  tool: 'validate_custom_speaker_build',
-                  useOutput: 'Submit the revised configuration before simulation.',
-                },
-                {
-                  tool: 'simulate_custom_speaker_in_room',
-                  useOutput: 'Use the validation result as build.',
-                },
-                {
-                  tool: 'save_custom_configuration',
-                  useOutput:
-                    'Pass configurationId, current expectedRevision, and the revised configuration.',
-                },
-              ],
-            },
-            {
-              id: 'local_build_management',
-              purpose:
-                'Create, list, rename, and delete custom speaker builds in the browser without signing in. Builds persist locally and sync to the account on sign-in.',
-              steps: [
-                {
-                  tool: 'list_local_builds',
-                  useOutput: 'Inspect existing local builds and their full configuration data.',
-                },
-                {
-                  tool: 'validate_custom_speaker_build',
-                  useOutput: 'Validate a new or revised configuration before saving.',
-                },
-                {
-                  tool: 'save_local_build',
-                  useOutput: 'Persist the build with a name. Returns buildId for future updates.',
-                },
-                {
-                  tool: 'rename_local_build',
-                  optional: true,
-                  useOutput: 'Rename a build by its buildId.',
-                },
-                {
-                  tool: 'delete_local_build',
-                  optional: true,
-                  useOutput: 'Remove a build by its buildId.',
-                },
-              ],
-              constraints: [
-                "Local builds are stored in the browser and limited to 20. They sync to the user's account on sign-in.",
-                'Use validate_custom_speaker_build before saving to ensure the configuration produces a valid engineering profile.',
-              ],
-            },
-            {
-              id: 'shopping_bag',
-              purpose:
-                'Inspect or change the browser-local bag and wishlist. These changes are not a checkout or purchase.',
-              steps: [
-                { tool: 'get_cart', useOutput: 'Inspect current bag.' },
-                {
-                  tool: 'add_to_cart | update_cart_quantity | remove_from_cart',
-                  useOutput: 'Use returned items and itemCount as the new state.',
-                },
-                {
-                  tool: 'get_wishlist | toggle_wishlist',
-                  useOutput: 'Use returned productNames as the new state.',
-                },
               ],
             },
             {
               id: 'visible_navigation',
               purpose:
-                'Move the visible Acoustom app to relevant, editable context so the user can review a product, comparison, simulation, or custom design.',
+                'Move the visible Acoustom app to the relevant, editable context so the user can review a product, comparison, simulation, or custom design alongside the agent.',
               steps: [
                 {
-                  tool: 'get_navigation_context',
+                  tool: 'get_user_context OR get_navigation_context',
                   useOutput:
-                    'Inspect the current visible page and supported destinations before navigating.',
+                    'Inspect the current visible page, comparison set, lab speaker, and active build before navigating.',
                 },
                 {
                   tool: 'navigate_acoustom',
                   useOutput:
-                    'Tell the user which page or section is now visible and what they can review or edit.',
+                    'Move the page and carry the relevant context in the same call: productNames fills the comparison matrix, speakerName selects the listening-lab speaker, buildId opens a saved build, trackId loads a reference track.',
                 },
               ],
               constraints: [
@@ -802,7 +1139,7 @@ export function useWebMcp(options: Options): void {
         name: 'get_navigation_context',
         title: 'Get visible navigation context',
         description:
-          'Returns the current visible Acoustom page, selected product where applicable, supported destinations, and the user-facing sections that can be focused. Use before navigating when the current page is unknown.',
+          'Returns the current visible Acoustom page, selected product where applicable, supported destinations, the user-facing sections that can be focused, the full navigation schema, and the navigation policy. Use before navigating when the current page is unknown.',
         inputSchema: noArgs,
         annotations: readOnly,
         execute: () => latest.current.getNavigationContext(),
@@ -811,10 +1148,18 @@ export function useWebMcp(options: Options): void {
         name: 'navigate_acoustom',
         title: 'Navigate Acoustom for user review',
         description:
-          'Moves the visible Acoustom app to a supported in-app destination so the user can review or edit relevant context. Use only when showing the page materially helps collaboration. This cannot navigate to arbitrary URLs, checkout, payment, or purchase.',
+          'Moves the visible Acoustom app to a supported in-app destination and can carry the relevant context in the same call: productNames fills the comparison matrix, speakerName selects the listening-lab speaker, buildId opens a saved build in the custom builder, trackId loads a reference track. Use only when showing the page materially helps collaboration. This cannot navigate to arbitrary URLs, checkout, payment, or purchase.',
         inputSchema: navigationInput,
         annotations: action,
-        execute: ({ destination, productName, sectionId }) => {
+        execute: ({
+          destination,
+          productName,
+          sectionId,
+          productNames,
+          buildId,
+          speakerName,
+          trackId,
+        }) => {
           if (
             typeof destination !== 'string' ||
             ![
@@ -831,10 +1176,57 @@ export function useWebMcp(options: Options): void {
             throw new Error(
               'productName must name a catalog product when destination is product_detail.'
             );
+          if (destination === 'custom_design' && typeof buildId === 'string') {
+            const stored = readLocalBuilds();
+            const exists = stored?.builds.some((item) => item.id === buildId) ?? false;
+            if (!exists) throw new Error('buildId must name a local custom build.');
+            useAgentViewStore.getState().requestCustomBuild(buildId);
+          }
+          if (destination === 'listening_lab' && typeof speakerName === 'string') {
+            if (speakerName !== 'custom-reference' && !find(speakerName))
+              throw new Error(
+                'speakerName must be a catalog product name or "custom-reference".'
+              );
+            useSimulationStore.getState().setSelectedSpeaker(speakerName);
+          }
+          if (destination === 'compare' && productNames) {
+            const { catalogProductNames = [], customBuildIds = [] } = productNames as {
+              catalogProductNames?: string[];
+              customBuildIds?: string[];
+            };
+            const ids: string[] = [];
+            for (const name of catalogProductNames) {
+              if (!find(name)) throw new Error(`Unknown catalog product: ${name}`);
+              const product = find(name);
+              if (product) ids.push(`catalog:${(product as { id: string }).id}`);
+            }
+            for (const buildId of customBuildIds) {
+              const stored = readLocalBuilds();
+              const exists = stored?.builds.some((item) => item.id === buildId) ?? false;
+              if (!exists) throw new Error(`Unknown custom build id: ${buildId}`);
+              ids.push(`custom:${buildId}`);
+            }
+            if (ids.length)
+              useAgentViewStore.getState().setComparisonSelection(ids.slice(0, 5), 'agent');
+          }
+          if (typeof trackId === 'string') {
+            const track = referenceTracks.find((candidate) => candidate.id === trackId);
+            if (track)
+              useAgentViewStore.getState().requestReferenceTrack({
+                sampleId: track.id,
+                label: track.name,
+              });
+          }
           return latest.current.navigate({
             destination: destination as NavigationDestination,
             ...(typeof productName === 'string' ? { productName } : {}),
             ...(typeof sectionId === 'string' ? { sectionId } : {}),
+            ...(productNames
+              ? { productNames: productNames as { catalogProductNames?: string[]; customBuildIds?: string[] } }
+              : {}),
+            ...(typeof buildId === 'string' ? { buildId } : {}),
+            ...(typeof speakerName === 'string' ? { speakerName } : {}),
+            ...(typeof trackId === 'string' ? { trackId } : {}),
           });
         },
       },
@@ -842,14 +1234,14 @@ export function useWebMcp(options: Options): void {
         name: 'recommend_speakers',
         title: 'Recommend speakers',
         description:
-          'Ranks catalog speakers for room size and listening preference, with optional format, budget, and feedback. Returns transparent matching reasons; use get_product and simulation to inspect recommendations. Room size and sound profile are required so an empty request cannot be mistaken for a meaningful recommendation.',
+          'Ranks catalog speakers for room size and listening preference, with optional format, budget (USD per pair), and feedback. Returns transparent matching reasons; use get_product and simulation to inspect recommendations. Room size and sound profile are required so an empty request cannot be mistaken for a meaningful recommendation.',
         inputSchema: {
           type: 'object',
           properties: {
             roomSize: { type: 'string', enum: ['small', 'medium', 'large'] },
             soundProfile: { type: 'string', enum: ['balanced', 'reference', 'warm', 'immersive'] },
             preferredFormat: { type: 'string', enum: ['standmount', 'floorstanding', 'active'] },
-            budgetEur: { type: 'number', minimum: 0 },
+            budgetUsd: { type: 'number', minimum: 0, description: 'USD per pair.' },
             feedback: {
               type: 'string',
               maxLength: 2_000,
@@ -861,8 +1253,8 @@ export function useWebMcp(options: Options): void {
           additionalProperties: false,
         },
         annotations: userContentReadOnly,
-        execute: ({ roomSize, soundProfile, preferredFormat, budgetEur, feedback }) => {
-          const budget = typeof budgetEur === 'number' ? budgetEur : undefined;
+        execute: ({ roomSize, soundProfile, preferredFormat, budgetUsd, feedback }) => {
+          const budget = typeof budgetUsd === 'number' ? budgetUsd : undefined;
           return {
             feedback: typeof feedback === 'string' ? feedback : undefined,
             recommendations: latest.current.products
@@ -905,12 +1297,12 @@ export function useWebMcp(options: Options): void {
                   reasons.push(
                     budget === undefined
                       ? 'no budget limit was supplied'
-                      : `within the €${budget} budget`
+                      : `within the $${budget} budget`
                   );
                 }
-                return { productName: product.name, score, reasons, priceEur: price };
+                return { productName: product.name, score, reasons, priceUsd: price };
               })
-              .sort((a, b) => b.score - a.score || a.priceEur - b.priceEur),
+              .sort((a, b) => b.score - a.score || a.priceUsd - b.priceUsd),
           };
         },
       },
@@ -945,33 +1337,183 @@ export function useWebMcp(options: Options): void {
       {
         name: 'compare_speakers',
         title: 'Compare speakers',
-        description: 'Returns specifications for two or three catalog speakers.',
+        description:
+          'Returns a column-per-speaker comparison for two to five catalog speakers and/or local custom builds. Prices are USD per pair; a custom build’s price is the configured component total from validation. Pass includeSimulation:true to run every column through the current live listening-lab room and report RT60 plus frequency response together; in that case the result depends on the room the user is currently simulating in, so call apply_agent_room_estimate or get_current_room_spec first when the room is unknown.',
         inputSchema: {
           type: 'object',
           properties: {
-            productNames: {
+            productNames: productNamesInput,
+            customBuildIds: {
               type: 'array',
-              minItems: 2,
-              maxItems: 3,
+              minItems: 0,
+              maxItems: MAX_COMPARISON_SLOTS,
               items: { type: 'string', minLength: 1, maxLength: 128 },
+              description:
+                'Optional local custom build ids from list_local_builds. Builds that have not been validated carry empty specifications until they are revalidated.',
+            },
+            includeSimulation: {
+              type: 'boolean',
+              default: false,
+              description:
+                'When true, simulate every column in the current live listening-lab room and return RT60 plus frequency response alongside the specifications.',
             },
           },
-          required: ['productNames'],
           additionalProperties: false,
         },
         annotations: readOnly,
-        execute: ({ productNames }) => {
-          if (!Array.isArray(productNames) || productNames.length < 2 || productNames.length > 3)
-            throw new Error('Choose two or three speaker names.');
-          const products = productNames.map(find);
-          if (products.some((item) => !item))
-            throw new Error('One or more speakers were not found.');
-          return (products as Product[]).map(({ name, type, price, specs }) => ({
-            name,
-            type,
-            price,
-            specifications: Object.fromEntries(specs),
+        execute: async (
+          { productNames, customBuildIds, includeSimulation = false },
+          client
+        ) => {
+          const catalogNames = Array.isArray(productNames) ? productNames : [];
+          const buildIds = Array.isArray(customBuildIds) ? customBuildIds : [];
+          if (catalogNames.length + buildIds.length < 2)
+            throw new Error('Provide at least two columns: catalog products, custom builds, or a mix.');
+          if (catalogNames.length + buildIds.length > MAX_COMPARISON_SLOTS)
+            throw new Error(`At most ${MAX_COMPARISON_SLOTS} columns are supported.`);
+          const catalogColumns = catalogNames.map((name) => {
+            const product = find(name);
+            if (!product) throw new Error(`Product not found: ${String(name)}`);
+            return {
+              kind: 'catalog' as const,
+              name: product.name,
+              type: product.type,
+              priceUsd: Number(product.price.replace(/[^0-9.]/g, '')) || 0,
+              specifications: Object.fromEntries(product.specs),
+            };
+          });
+          const buildColumns = buildIds.map((buildId) => {
+            const stored = readLocalBuilds();
+            const build = stored?.builds.find((item) => item.id === buildId);
+            if (!build) throw new Error(`Custom build not found: ${String(buildId)}`);
+            return {
+              kind: 'custom' as const,
+              buildId: build.id,
+              name: build.name,
+              type: 'Custom design',
+              priceUsd:
+                customPricing((build.configuration as unknown as Json) ?? {}).totalUsd,
+              specifications: Object.fromEntries(build.specs ?? []),
+            };
+          });
+          let simulations: Array<Record<string, unknown> | null> | null = null;
+          if (includeSimulation) {
+            const sim = useSimulationStore.getState();
+            const room = sim.roomDimensions;
+            const baseBody = (column: { name: string; buildId?: string }) => {
+              if (column.buildId) {
+                const profile = findCustomProfile(column.buildId);
+                if (!profile)
+                  throw new Error(
+                    `Custom build ${column.buildId} has no simulation profile. Revalidate it via validate_custom_speaker_build and save it with save_local_build.`
+                  );
+                return {
+                  speakerId: 'custom-reference',
+                  speakerProfile: profile,
+                  room,
+                  speakers: [sim.speakerPositions.left, sim.speakerPositions.right],
+                  listener: sim.listenerPosition,
+                };
+              }
+              return {
+                speakerId: column.name,
+                room,
+                speakers: [sim.speakerPositions.left, sim.speakerPositions.right],
+                listener: sim.listenerPosition,
+              };
+            };
+            simulations = await Promise.all(
+              [...catalogColumns, ...buildColumns].map(async (column) => {
+                try {
+                  const response = await fetch(apiUrl('/api/simulate'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(baseBody(column)),
+                    signal: client?.signal,
+                  });
+                  if (!response.ok) return null;
+                  const result = (await response.json()) as SimulationResult;
+                  return {
+                    rt60: result.metrics.rt60,
+                    frequencyResponse: result.frequencyResponse,
+                    speakerPerformance: result.speakerPerformance,
+                  };
+                } catch {
+                  return null;
+                }
+              })
+            );
+          }
+          const columns = [...catalogColumns, ...buildColumns].map((column, index) => ({
+            ...column,
+            simulation:
+              simulations && simulations[index]
+                ? {
+                    rt60: (simulations[index] as { rt60: number }).rt60,
+                    frequencyResponse: (
+                      simulations[index] as { frequencyResponse: SimulationResult['frequencyResponse'] }
+                    ).frequencyResponse,
+                    speakerPerformance: (
+                      simulations[index] as { speakerPerformance: SimulationResult['speakerPerformance'] }
+                    ).speakerPerformance,
+                  }
+                : null,
           }));
+          return {
+            columns,
+            room: includeSimulation ? useSimulationStore.getState().roomDimensions : null,
+            note: includeSimulation
+              ? 'Simulations share the live listening-lab room; values are only directly comparable when the room is identical across columns.'
+              : 'Pass includeSimulation:true to gather matched in-room evidence.',
+          };
+        },
+      },
+      {
+        name: 'set_comparison_selection',
+        title: 'Set comparison selection',
+        description:
+          'Loads up to five catalog speakers and/or local custom builds into the comparison matrix without changing the visible page. Use navigate_acoustom(destination: compare, productNames) to do the same and also land on the comparison page.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            catalogProductNames: {
+              type: 'array',
+              minItems: 0,
+              maxItems: MAX_COMPARISON_SLOTS,
+              items: { type: 'string', minLength: 1, maxLength: 128 },
+            },
+            customBuildIds: {
+              type: 'array',
+              minItems: 0,
+              maxItems: MAX_COMPARISON_SLOTS,
+              items: { type: 'string', minLength: 1, maxLength: 128 },
+            },
+          },
+          additionalProperties: false,
+        },
+        annotations: action,
+        execute: ({ catalogProductNames, customBuildIds }: {
+          catalogProductNames?: string[];
+          customBuildIds?: string[];
+        }) => {
+          const catalog = Array.isArray(catalogProductNames) ? catalogProductNames : [];
+          const buildIds = Array.isArray(customBuildIds) ? customBuildIds : [];
+          const ids: string[] = [];
+          for (const name of catalog) {
+            if (!find(name)) throw new Error(`Unknown catalog product: ${name}`);
+            const product = find(name);
+            if (product) ids.push(`catalog:${product.id}`);
+          }
+          for (const buildId of buildIds) {
+            const stored = readLocalBuilds();
+            const exists = stored?.builds.some((item) => item.id === buildId) ?? false;
+            if (!exists) throw new Error(`Unknown custom build id: ${buildId}`);
+            ids.push(`custom:${buildId}`);
+          }
+          if (ids.length === 0) throw new Error('Provide at least one catalog product or custom build.');
+          const trimmed = ids.slice(0, MAX_COMPARISON_SLOTS);
+          useAgentViewStore.getState().setComparisonSelection(trimmed, 'agent');
+          return { selection: trimmed, selectionSource: 'agent' as const };
         },
       },
       {
@@ -999,6 +1541,103 @@ export function useWebMcp(options: Options): void {
         ],
       },
       {
+        name: 'list_reference_tracks',
+        title: 'List reference tracks',
+        description:
+          'Returns the reference tracks the listening lab can audition. Use set_reference_track to load one.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () => referenceTracks,
+      },
+      {
+        name: 'set_reference_track',
+        title: 'Set reference track',
+        description:
+          'Loads a reference track into the listening lab without moving the page. The track is identified by id from list_reference_tracks. The user still needs to press play in the lab; this only chooses the track.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            trackId: { type: 'string', enum: referenceTracks.map((track) => track.id) },
+          },
+          required: ['trackId'],
+          additionalProperties: false,
+        },
+        annotations: action,
+        execute: ({ trackId }) => {
+          const track = referenceTracks.find((candidate) => candidate.id === trackId);
+          if (!track) throw new Error(`Unknown reference track: ${String(trackId)}`);
+          const state = useAgentViewStore.getState();
+          state.requestReferenceTrack({ sampleId: track.id, label: track.name });
+          state.setActiveReferenceTrackLabel(track.name);
+          return {
+            ok: true,
+            referenceTrackRequest: state.referenceTrackRequest,
+            activeReferenceTrackLabel: state.activeReferenceTrackLabel,
+          };
+        },
+      },
+      {
+        name: 'set_music_preferences',
+        title: 'Set music preferences',
+        description:
+          'Stores a short summary of the user’s listening habits so the reasoning, recommendations, and visible page share the same context. Acoustom has no Spotify or playlist integration; this tool only records what the agent already knows.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            summary: { type: 'string', maxLength: 1000 },
+            genres: { type: 'array', items: { type: 'string', maxLength: 64 } },
+            tracks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string', minLength: 1, maxLength: 200 },
+                  artist: { type: 'string', maxLength: 200 },
+                },
+                required: ['title'],
+                additionalProperties: false,
+              },
+            },
+            source: {
+              type: 'string',
+              maxLength: 64,
+              description: 'Where the agent obtained this, e.g. "spotify_playlist" or "conversation".',
+            },
+          },
+          required: ['summary'],
+          additionalProperties: false,
+        },
+        annotations: userContentAction,
+        execute: (input) => {
+          const summary = typeof input.summary === 'string' ? input.summary : undefined;
+          const genres = Array.isArray(input.genres)
+            ? input.genres.filter((value): value is string => typeof value === 'string')
+            : undefined;
+          const tracks = Array.isArray(input.tracks)
+            ? input.tracks
+                .map((track) => {
+                  if (!track || typeof track !== 'object') return null;
+                  const entry = track as Json;
+                  if (typeof entry.title !== 'string') return null;
+                  return {
+                    title: entry.title,
+                    ...(typeof entry.artist === 'string' ? { artist: entry.artist } : {}),
+                  };
+                })
+                .filter((value): value is { title: string; artist?: string } => !!value)
+            : undefined;
+          const source = typeof input.source === 'string' ? input.source : undefined;
+          if (!summary) throw new Error('summary is required.');
+          useAgentViewStore
+            .getState()
+            .setMusicPreferences({ summary, genres, tracks, source });
+          return {
+            ok: true,
+            musicPreferences: useAgentViewStore.getState().musicPreferences,
+          };
+        },
+      },
+      {
         name: 'get_room_estimate_contract',
         title: 'Get room-image estimate contract',
         description:
@@ -1016,10 +1655,66 @@ export function useWebMcp(options: Options): void {
         }),
       },
       {
+        name: 'attach_room_reference_images',
+        title: 'Attach agent room reference images',
+        description:
+          'Pushes image URLs the agent already holds into the listening-lab room reference panel so the user can see them. Acoustom has no built-in image understanding; the estimate is the agent’s.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            images: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 6,
+              items: {
+                type: 'object',
+                required: ['imageUrl'],
+                properties: {
+                  imageUrl: { type: 'string', minLength: 1, maxLength: 1024 },
+                  fileName: { type: 'string', maxLength: 200 },
+                  mimeType: { type: 'string', maxLength: 64 },
+                },
+                additionalProperties: false,
+              },
+            },
+            guidance: {
+              type: 'string',
+              maxLength: 500,
+              description: 'Optional one-line note shown alongside the images in the lab.',
+            },
+          },
+          required: ['images'],
+          additionalProperties: false,
+        },
+        annotations: userContentAction,
+        execute: (input) => {
+          const images = Array.isArray(input.images)
+            ? input.images.filter((entry): entry is Json => !!entry && typeof entry === 'object')
+            : [];
+          const guidance = typeof input.guidance === 'string' ? input.guidance : undefined;
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+          const references = images.map((image: Json, index: number) => ({
+            id: `agent-${Date.now()}-${index}`,
+            imageUrl: String(image.imageUrl),
+            fileName: typeof image.fileName === 'string' ? image.fileName : 'agent-image',
+            mimeType: typeof image.mimeType === 'string' ? image.mimeType : 'image/jpeg',
+            expiresAt,
+          }));
+          useSimulationStore.getState().setRoomReferenceAssets(references);
+          return {
+            ok: true,
+            references,
+            guidance:
+              guidance ??
+              'Image-derived dimensions are estimates. Call get_room_estimate_contract then apply_agent_room_estimate to propose dimensions, preset, and placement for the user to confirm.',
+          };
+        },
+      },
+      {
         name: 'get_room_reference_images',
         title: 'Get Listening Lab room images',
         description:
-          'Returns temporary, user-approved room-image URLs uploaded in Listening Lab. Inspect every returned image before inferring an editable room estimate. If no references are returned, ask the user to upload them in Listening Lab or attach them directly to the agent conversation.',
+          'Returns temporary, user-approved room-image URLs uploaded in Listening Lab. Inspect every returned image before inferring an editable room estimate. If no references are returned, the user can attach images directly to the agent conversation or call attach_room_reference_images with image URLs you already hold.',
         inputSchema: noArgs,
         annotations: userContentReadOnly,
         execute: () => {
@@ -1028,7 +1723,7 @@ export function useWebMcp(options: Options): void {
             references,
             guidance: references.length
               ? 'These image URLs are temporary user-approved visual inputs. Inspect them, then call get_room_estimate_contract followed by apply_agent_room_estimate.'
-              : 'No Listening Lab room images are currently available. The user may attach images directly to this conversation instead.',
+              : 'No Listening Lab room images are currently available. The user may attach images directly to this conversation, or call attach_room_reference_images with image URLs you already hold.',
           };
         },
       },
@@ -1036,19 +1731,31 @@ export function useWebMcp(options: Options): void {
         name: 'apply_agent_room_estimate',
         title: 'Apply agent room estimate',
         description:
-          'Applies an agent’s best-effort image-based room estimate to the live browser simulation controls. This is collaborative, editable, and intentionally not a hard confirmation gate.',
+          'Applies an agent’s best-effort image-based room estimate to the live browser simulation controls. speakerPositions and listener are optional; when only dimensions and a preset are known, Acoustom fills a sensible default stereo layout. The estimate is collaborative, editable, and intentionally not a hard confirmation gate.',
         inputSchema: roomEstimateInput,
         annotations: userContentAction,
-        execute: ({
-          width,
-          length,
-          height,
-          presetId,
-          speakerPositions,
-          listener,
-          assumptions = [],
-          confidence = {},
-        }) => {
+        execute: (input) => {
+          const width = input.width;
+          const length = input.length;
+          const height = input.height;
+          const presetId = input.presetId;
+          const speakerPositions = Array.isArray(input.speakerPositions)
+            ? (input.speakerPositions as Array<Record<string, unknown>>)
+            : undefined;
+          const listener =
+            input.listener && typeof input.listener === 'object'
+              ? (input.listener as Record<string, unknown>)
+              : undefined;
+          const assumptions = Array.isArray(input.assumptions)
+            ? input.assumptions.filter((value): value is string => typeof value === 'string')
+            : [];
+          const confidence =
+            input.confidence && typeof input.confidence === 'object'
+              ? (input.confidence as Record<string, string>)
+              : {};
+          if (typeof width !== 'number' || typeof length !== 'number' || typeof height !== 'number')
+            throw new Error('width, length, and height must be finite numbers.');
+          if (typeof presetId !== 'string') throw new Error('presetId must be a string.');
           const store = useSimulationStore.getState();
           store.setRoomDimensions({
             width: finite(width, 'width'),
@@ -1056,8 +1763,11 @@ export function useWebMcp(options: Options): void {
             height: finite(height, 'height'),
             presetId: String(presetId),
           });
-          const positions = speakerPositions as Array<Record<string, unknown>>;
-          const target = listener as Record<string, unknown>;
+          const defaults = stereoLayout(width, length, height);
+          const positions = (speakerPositions as Array<Record<string, unknown>> | undefined) ??
+            (defaults.speakers as Array<Record<string, unknown>>);
+          const target = (listener as Record<string, unknown> | undefined) ??
+            (defaults.listener as Record<string, unknown>);
           store.setSpeakerPosition('left', {
             x: finite(positions[0].x, 'speakerPositions[0].x'),
             y: finite(positions[0].y, 'speakerPositions[0].y'),
@@ -1096,6 +1806,79 @@ export function useWebMcp(options: Options): void {
             room: store.roomDimensions,
             speakerPositions: [store.speakerPositions.left, store.speakerPositions.right],
             listener: store.listenerPosition,
+          };
+        },
+      },
+      {
+        name: 'set_listening_lab_speaker',
+        title: 'Set listening-lab speaker',
+        description:
+          'Selects the speaker the listening lab will simulate. Pass a catalog product name, or "custom-reference" to simulate the most recently validated custom build. Use navigate_acoustom(destination: listening_lab, speakerName) to do the same and also move the page.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            speakerName: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 128,
+              description: 'Catalog product name or "custom-reference".',
+            },
+          },
+          required: ['speakerName'],
+          additionalProperties: false,
+        },
+        annotations: action,
+        execute: ({ speakerName }) => {
+          if (typeof speakerName !== 'string')
+            throw new Error('speakerName must be a string.');
+          if (speakerName === 'custom-reference') {
+            const profile = window.sessionStorage.getItem('acoustom-custom-speaker-profile');
+            if (!profile)
+              throw new Error(
+                'No validated custom build is available. Validate one with validate_custom_speaker_build and save it with save_local_build first.'
+              );
+            useSimulationStore.getState().setSelectedSpeaker('custom-reference');
+            return { ok: true, selectedSpeakerId: 'custom-reference', source: 'custom-build' };
+          }
+          if (!find(speakerName))
+            throw new Error(`Unknown catalog product: ${String(speakerName)}`);
+          useSimulationStore.getState().setSelectedSpeaker(speakerName);
+          return { ok: true, selectedSpeakerId: speakerName, source: 'catalog' };
+        },
+      },
+      {
+        name: 'refresh_room_simulation',
+        title: 'Refresh room simulation',
+        description:
+          'Forces the listening lab to re-run the simulation against its current room and selected speaker. The lab usually re-runs automatically; use this when the user changed controls outside the lab or you want a guaranteed fresh result.',
+        inputSchema: noArgs,
+        annotations: action,
+        execute: () => {
+          const sim = useSimulationStore.getState();
+          if (!sim.selectedSpeakerId)
+            throw new Error('No speaker is selected. Call set_listening_lab_speaker first.');
+          sim.retrySimulation();
+          return { ok: true, selectedSpeakerId: sim.selectedSpeakerId };
+        },
+      },
+      {
+        name: 'get_live_simulation_result',
+        title: 'Get live simulation result',
+        description:
+          'Returns the simulation result the listening lab is currently displaying, including the profile provenance. Use this instead of re-running a simulation through the API when the user has not changed the room or speaker since the last run.',
+        inputSchema: noArgs,
+        annotations: readOnly,
+        execute: () => {
+          const sim = useSimulationStore.getState();
+          if (!sim.simulationResult)
+            return {
+              status: sim.simulationStatus,
+              error: sim.simulationError,
+              guidance: 'No simulation result is available yet. Wait for the lab to finish or call refresh_room_simulation.',
+            };
+          return {
+            status: 'ready' as const,
+            result: sim.simulationResult,
           };
         },
       },
@@ -1440,7 +2223,7 @@ export function useWebMcp(options: Options): void {
       {
         name: 'add_to_cart',
         title: 'Add to bag',
-        description: 'Adds one to ten pairs of a catalog speaker to the current shopping bag.',
+        description: 'Adds one to ten pairs of a catalog speaker to the current shopping bag. The bag is browser-local; it is not a checkout or purchase.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -1469,7 +2252,7 @@ export function useWebMcp(options: Options): void {
       {
         name: 'update_cart_quantity',
         title: 'Update bag quantity',
-        description: 'Sets a speaker quantity in the current bag; use zero to remove it.',
+        description: 'Sets a speaker quantity in the current bag; use zero to remove it. The bag is browser-local.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -1498,7 +2281,7 @@ export function useWebMcp(options: Options): void {
       {
         name: 'remove_from_cart',
         title: 'Remove from bag',
-        description: 'Removes a catalog speaker completely from the current shopping bag.',
+        description: 'Removes a catalog speaker completely from the current shopping bag. The bag is browser-local.',
         inputSchema: productInput,
         annotations: action,
         execute: ({ productName }) => {
@@ -1516,7 +2299,7 @@ export function useWebMcp(options: Options): void {
       {
         name: 'toggle_wishlist',
         title: 'Toggle wishlist',
-        description: 'Saves a catalog speaker to the wishlist, or removes it if already saved.',
+        description: 'Saves a catalog speaker to the wishlist, or removes it if already saved. The wishlist is browser-local.',
         inputSchema: productInput,
         annotations: action,
         execute: ({ productName }) => {
@@ -1565,7 +2348,7 @@ export function useWebMcp(options: Options): void {
         name: 'list_local_builds',
         title: 'List local custom builds',
         description:
-          "Lists custom speaker builds saved in this browser's local storage. Available without signing in. Each build stores the full spec data aligned with the build process end to end.",
+          "Lists custom speaker builds saved in this browser's local storage. Available without signing in. Each build stores the full spec data and the validated engineering profile so it can be simulated and compared.",
         inputSchema: noArgs,
         annotations: readOnly,
         execute: () => {
@@ -1580,6 +2363,8 @@ export function useWebMcp(options: Options): void {
               updatedAt: b.updatedAt,
               configuration: b.configuration,
               derived: b.derived,
+              specs: b.specs,
+              hasSimulationProfile: !!b.derived?.simulationProfile,
             })),
             activeBuildId: stored?.activeBuildId ?? '',
           };
@@ -1589,7 +2374,7 @@ export function useWebMcp(options: Options): void {
         name: 'save_local_build',
         title: 'Save local custom build',
         description:
-          "Creates or updates a custom speaker build in this browser's local storage without requiring sign-in. If buildId is provided, updates that build; otherwise creates a new one. The configuration follows the same schema as validate_custom_speaker_build.",
+          "Creates or updates a custom speaker build in this browser's local storage without requiring sign-in. Validates the configuration against the server and persists the derived engineering profile so the build can be simulated and compared. If buildId is provided, updates that build; otherwise creates a new one. The configuration follows the same schema as validate_custom_speaker_build.",
         inputSchema: {
           type: 'object',
           properties: {
@@ -1600,12 +2385,18 @@ export function useWebMcp(options: Options): void {
             },
             name: { type: 'string', minLength: 1, maxLength: 80 },
             configuration: customBuildInput,
+            setAsActive: {
+              type: 'boolean',
+              default: true,
+              description:
+                'When true (default), mark the build as active so the listening lab uses it. The build is also written to session storage as the live custom-reference profile.',
+            },
           },
           required: ['name', 'configuration'],
           additionalProperties: false,
         },
         annotations: userContentAction,
-        execute: async ({ buildId, name, configuration }) => {
+        execute: async ({ buildId, name, configuration, setAsActive = true }) => {
           const stored = readLocalBuilds();
           const builds = stored?.builds ?? [];
           if (!buildId && builds.length >= 20)
@@ -1619,21 +2410,36 @@ export function useWebMcp(options: Options): void {
           const baseConfig = {
             version: 1,
             ...(configuration as Record<string, unknown>),
+            name: String(name),
           } as CustomSpeakerConfiguration;
+          const validated = await validateBuild(baseConfig);
           const build = existing ?? createLocalBuild(baseConfig, String(name));
           const updated: LocalBuild = {
             ...build,
             name: String(name),
-            configuration: { ...baseConfig, name: String(name) },
+            configuration: baseConfig,
+            derived: validated.derived,
+            specs: validated.specs,
             updatedAt: new Date().toISOString(),
           };
           upsertLocalBuild(updated);
+          if (setAsActive) {
+            window.sessionStorage.setItem(
+              'acoustom-custom-speaker-profile',
+              JSON.stringify(validated.derived.simulationProfile)
+            );
+            useSimulationStore.getState().setSelectedSpeaker('custom-reference');
+          }
           return {
             ok: true,
             buildId: updated.id,
             name: updated.name,
+            configuration: updated.configuration,
+            derived: updated.derived,
+            specs: updated.specs,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
+            setAsActive,
           };
         },
       },

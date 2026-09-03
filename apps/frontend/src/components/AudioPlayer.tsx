@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, Play, Share2, Upload } from 'lucide-react';
 import { useSimulationStore } from '../store/simulation';
+import { useAgentViewStore } from '../store/agentView';
 import { renderSimulatedWav, shareSimulatedWav } from '../lib/simulatedAudio';
 
 const samples = [
@@ -48,6 +49,22 @@ export default function AudioPlayer() {
   const [status, setStatus] = useState('Choose a reference track to compare.');
   const [isRendering, setIsRendering] = useState(false);
   const selectedSample = samples.find((sample) => sample.id === selectedId) ?? samples[0];
+  const agentTrackRequest = useAgentViewStore((state) => state.referenceTrackRequest);
+  const setActiveLabel = useAgentViewStore((state) => state.setActiveReferenceTrackLabel);
+  const musicPreferences = useAgentViewStore((state) => state.musicPreferences);
+  useEffect(() => {
+    if (
+      agentTrackRequest?.sampleId &&
+      agentTrackRequest.sampleId !== selectedId &&
+      samples.some((sample) => sample.id === agentTrackRequest.sampleId)
+    ) {
+      void selectSample(agentTrackRequest.sampleId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentTrackRequest?.sampleId]);
+  useEffect(() => {
+    setActiveLabel(selectedSample.name);
+  }, [selectedSample.name, setActiveLabel]);
   useEffect(() => {
     void selectSample(selectedSample.id); // Seed the player with a useful reference track.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +143,13 @@ export default function AudioPlayer() {
           <p className="lab-panel-label">Listen and compare</p>
           <h2>{selectedSample.name}</h2>
           <span>{selectedSample.detail}</span>
+          {musicPreferences?.summary && (
+            <p className="agent-music-preferences">
+              <strong>Music preferences</strong>
+              <span>{musicPreferences.summary}</span>
+              {musicPreferences.source && <em>via {musicPreferences.source}</em>}
+            </p>
+          )}
         </div>
         <button className="upload-track" onClick={() => fileInput.current?.click()}>
           <Upload size={14} /> Your track

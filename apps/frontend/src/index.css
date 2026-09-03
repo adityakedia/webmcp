@@ -80,7 +80,6 @@ a {
   gap: 30px;
   margin-left: auto;
   margin-right: 42px;
-  padding-left: 190px;
   font-size: 12px;
 }
 .nav-actions {
@@ -544,11 +543,30 @@ footer a {
   }
 }
 
+@media (min-width: 801px) {
+  .wordmark {
+    position: static;
+    order: 2;
+    transform: none;
+    margin-left: 34px;
+    white-space: nowrap;
+  }
+  .menu-trigger {
+    order: 1;
+  }
+  .nav-links {
+    order: 3;
+    padding-left: 0;
+  }
+  .nav-actions {
+    order: 4;
+  }
+}
+
 @media (min-width: 801px) and (max-width: 1120px) {
   .nav-links {
     gap: 16px;
     margin-right: 22px;
-    padding-left: 135px;
   }
   .nav-actions {
     gap: 10px;

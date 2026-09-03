@@ -18,6 +18,7 @@ import {
   MAX_LOCAL_BUILDS,
   type LocalBuild,
 } from '../lib/localBuilds';
+import { useAgentViewStore } from '../store/agentView';
 import {
   deleteBuildFromAccount,
   syncBuildToAccount,
@@ -521,6 +522,15 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     setTouched(ALL_CATEGORIES);
     setStep(7);
   };
+  const requestedBuildId = useAgentViewStore((state) => state.requestedCustomBuildId);
+  useEffect(() => {
+    if (!requestedBuildId) return;
+    if (activeBuildId === requestedBuildId) return;
+    const build = builds.find((item) => item.id === requestedBuildId);
+    if (build) {
+      activateBuild(requestedBuildId);
+    }
+  }, [requestedBuildId, builds, activeBuildId]);
   const newBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {
       window.alert(

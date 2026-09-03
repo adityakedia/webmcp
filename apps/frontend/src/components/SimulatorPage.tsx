@@ -161,7 +161,7 @@ export default function SimulatorPage({
             profile in the same room.
           </p>
         </aside>
-        <section className="lab-room-stage">
+        <section className="lab-room-stage" id="room">
           <div className="stage-title">
             <div>
               <p className="lab-panel-label">Your room</p>
@@ -217,15 +217,17 @@ export default function SimulatorPage({
         </aside>
       </section>
       {result && (
-        <SimulationInsights
-          result={result}
-          room={room}
-          speakerName={
-            isCustomBuild
-              ? customBuild.name
-              : (selectedProduct?.name ?? selectedSpeakerId ?? 'Selected speaker')
-          }
-        />
+        <div id="simulation">
+          <SimulationInsights
+            result={result}
+            room={room}
+            speakerName={
+              isCustomBuild
+                ? customBuild.name
+                : (selectedProduct?.name ?? selectedSpeakerId ?? 'Selected speaker')
+            }
+          />
+        </div>
       )}
     </section>
   );
