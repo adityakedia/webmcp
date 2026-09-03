@@ -862,57 +862,41 @@ export function useWebMcp(options: Options): void {
         },
         annotations: userContentReadOnly,
         execute: ({ roomSize, soundProfile, preferredFormat, budgetEur, feedback }) => {
-          const guidance: Record<string, { rooms: string[]; profiles: string[]; format: string }> =
-            {
-              'Contour 20i': {
-                rooms: ['small', 'medium'],
-                profiles: ['balanced', 'reference'],
-                format: 'standmount',
-              },
-              'Confidence 20': {
-                rooms: ['small', 'medium'],
-                profiles: ['reference'],
-                format: 'standmount',
-              },
-              'Emit 50': {
-                rooms: ['medium', 'large'],
-                profiles: ['balanced', 'immersive'],
-                format: 'floorstanding',
-              },
-              'Aether 7': {
-                rooms: ['large'],
-                profiles: ['reference', 'immersive'],
-                format: 'floorstanding',
-              },
-              'Terra One': {
-                rooms: ['small', 'medium'],
-                profiles: ['warm', 'balanced'],
-                format: 'active',
-              },
-              'Vector 12': {
-                rooms: ['small', 'medium'],
-                profiles: ['reference'],
-                format: 'active',
-              },
-            };
           const budget = typeof budgetEur === 'number' ? budgetEur : undefined;
           return {
             feedback: typeof feedback === 'string' ? feedback : undefined,
             recommendations: latest.current.products
               .map((product) => {
-                const guide = guidance[product.name];
                 const price = Number(product.price.replace(/[^0-9.]/g, ''));
                 const reasons = [];
                 let score = 0;
-                if (guide?.rooms.includes(String(roomSize))) {
+                const format = product.type.toLowerCase().includes('active')
+                  ? 'active'
+                  : product.type.toLowerCase().includes('floor')
+                    ? 'floorstanding'
+                    : 'standmount';
+                const lowFrequency = product.specs.find(([label]) => label === 'Frequency response')?.[1] ?? '';
+                const lowHz = Number(lowFrequency.match(/[\d.]+/)?.[0] ?? 0);
+                const roomMatch = (roomSize === 'small' && format !== 'floorstanding')
+                  || (roomSize === 'large' && format === 'floorstanding')
+                  || roomSize === 'medium';
+                if (roomMatch) {
                   score += 2;
                   reasons.push(`suited to a ${roomSize} room`);
                 }
-                if (guide?.profiles.includes(String(soundProfile))) {
+                const tone = product.tone.toLowerCase();
+                const profileMatch = soundProfile === 'warm'
+                  ? tone.includes('warm')
+                  : soundProfile === 'reference'
+                    ? tone.includes('reference') || tone.includes('studio') || tone.includes('signature')
+                    : soundProfile === 'immersive'
+                      ? format === 'floorstanding' || lowHz <= 35
+                      : true;
+                if (profileMatch) {
                   score += 2;
                   reasons.push(`matches the ${soundProfile} listening preference`);
                 }
-                if (guide?.format === preferredFormat) {
+                if (format === preferredFormat) {
                   score += 1;
                   reasons.push(`matches the preferred ${preferredFormat} format`);
                 }

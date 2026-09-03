@@ -62,7 +62,7 @@ def _pretty(value: str) -> str:
 def derive_product_specs(build: dict) -> list[list[str]]:
     """Convert a validated ``CustomSpeakerBuild`` dict into canonical ``[[key, value]]`` spec pairs.
 
-    The first 17 rows use the same keys as ``PUBLIC_CATALOG`` so the comparison
+    The first 17 rows use the same keys as the database public catalog so the comparison
     matrix can show catalog and custom speakers side by side.  Additional rows
     surface engineering details that only apply to custom builds.
     """

@@ -1,9 +1,8 @@
 """Speaker-specific, specification-backed profiles for the public catalog.
 
-Numeric simulation values (bandwidth, sensitivity) are **derived from
-``PUBLIC_CATALOG``** so the catalog remains the single source of truth.
-Voicing tilt is the only value not present in the catalog specs — it is a
-simulation-only parameter kept here.
+Numeric simulation values (bandwidth, sensitivity) are derived from the
+database catalog row so the catalog remains the single source of truth.
+Simulation values are derived from the database catalog specifications.
 
 The retail catalog does not include completed-system measurement files. These
 profiles therefore model each product's published bandwidth, sensitivity and
@@ -27,18 +26,6 @@ class CatalogSpeakerProfile:
     high_frequency_hz: float
     sensitivity_db: float
     voicing_tilt_db_per_decade: float
-
-
-# Voicing tilt is simulation-only metadata not present in the catalog specs.
-# Negative = warmer (less treble), positive = brighter.
-_VOICING_TILT = {
-    "contour 20i": -0.15,
-    "confidence 20": 0.05,
-    "emit 50": 0.2,
-    "aether 7": 0.1,
-    "terra one": -0.3,
-    "vector 12": 0.15,
-}
 
 
 def _parse_freq_response(specs: list[list[str]]) -> tuple[float, float]:
@@ -69,7 +56,7 @@ def build_catalog_profile(speaker: dict) -> CatalogSpeakerProfile:
     return CatalogSpeakerProfile(
         id=speaker["id"], name=name, low_frequency_hz=low, high_frequency_hz=high,
         sensitivity_db=_parse_sensitivity(speaker["specs"]),
-        voicing_tilt_db_per_decade=_VOICING_TILT.get(name.casefold(), 0.0),
+        voicing_tilt_db_per_decade=0.0,
     )
 
 
