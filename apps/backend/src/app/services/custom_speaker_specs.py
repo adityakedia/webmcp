@@ -88,6 +88,8 @@ def derive_product_specs(build: dict) -> list[list[str]]:
         ["Directivity", "—"],
         ["Inputs", "Line-level RCA / Speaker-level" if is_sub else "Single-wired speaker terminals"],
         ["Calibration", "—"],
+        ["Wireless", "—"],
+        ["Room correction", "—"],
         ["Dimensions (H × W × D)", DIMENSIONS.get(c["format"], {}).get(c["cabinetSize"], "—")],
         ["Weight", WEIGHT.get(c["format"], {}).get(c["cabinetSize"], "—")],
         ["Alignment", _pretty(a["alignment"])],

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Copy, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowRight, Copy, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import type {
   CustomSpeakerConfiguration,
   AcousticPlatformId,
   CabinetFinishId,
   PersonalisationKind,
-} from "@acoustom/types";
-import type { Product } from "../App";
-import ProceduralSpeaker from "./ProceduralSpeaker";
-import SimulatorPage from "./SimulatorPage";
+} from '@acoustom/types';
+import type { Product } from '../App';
+import BuildSheetExporter from './BuildSheetExporter';
+import ProceduralSpeaker from './ProceduralSpeaker';
+import SimulatorPage from './SimulatorPage';
 import {
   createLocalBuild,
   readLocalBuilds,
@@ -16,19 +17,17 @@ import {
   upsertLocalBuild,
   MAX_LOCAL_BUILDS,
   type LocalBuild,
-} from "../lib/localBuilds";
+} from '../lib/localBuilds';
 import {
   deleteBuildFromAccount,
   syncBuildToAccount,
   validateBuild,
-} from "../lib/customBuildRepository";
+} from '../lib/customBuildRepository';
 
 type Props = { products: Product[]; onBack: () => void };
-type Category =
-  "format" | "platform" | "bass" | "cabinet" | "finish" | "personalisation";
+type Category = 'format' | 'platform' | 'bass' | 'cabinet' | 'finish' | 'personalisation';
 
-const money = (value: number) =>
-  value ? `+$${value.toLocaleString()}` : "Included";
+const money = (value: number) => (value ? `+$${value.toLocaleString()}` : 'Included');
 const platformBass = {
   two_way_compact: {
     tuningHz: 42,
@@ -48,239 +47,239 @@ const platformBass = {
 const options = {
   format: [
     {
-      id: "standmount",
-      title: "Standmount",
-      image: "platform-compact.png",
+      id: 'standmount',
+      title: 'Standmount',
+      image: 'platform-compact.png',
       price: 0,
-      copy: "Compact, stand-supported form.",
+      copy: 'Compact, stand-supported form.',
     },
     {
-      id: "floorstanding",
-      title: "Floorstanding",
-      image: "platform-extended.png",
+      id: 'floorstanding',
+      title: 'Floorstanding',
+      image: 'platform-extended.png',
       price: 450,
-      copy: "Full-height cabinet with more scale.",
+      copy: 'Full-height cabinet with more scale.',
     },
   ],
   platform: [
     {
-      id: "two_way_compact",
-      title: "SEAS Mimir · 2-way",
-      image: "platform-compact.png",
+      id: 'two_way_compact',
+      title: 'SEAS Mimir · 2-way',
+      image: 'platform-compact.png',
       price: 2400,
-      copy: "Tweeter + 6.5″ woofer · focused imaging.",
+      copy: 'Tweeter + 6.5″ woofer · focused imaging.',
     },
     {
-      id: "two_way_extended",
-      title: "SEAS Aphel · 2-way",
-      image: "platform-extended.png",
+      id: 'two_way_extended',
+      title: 'SEAS Aphel · 2-way',
+      image: 'platform-extended.png',
       price: 3200,
-      copy: "Tweeter + 8″ woofer · deeper reach.",
+      copy: 'Tweeter + 8″ woofer · deeper reach.',
     },
     {
-      id: "three_way_reference",
-      title: "SEAS 403 Revisited · 3-way",
-      image: "platform-three-way.png",
+      id: 'three_way_reference',
+      title: 'SEAS 403 Revisited · 3-way',
+      image: 'platform-three-way.png',
       price: 4300,
-      copy: "Tweeter + mid + woofer · full range.",
+      copy: 'Tweeter + mid + woofer · full range.',
     },
     {
-      id: "subwoofer_active",
-      title: "Dayton active sub",
-      image: "platform-subwoofer.png",
+      id: 'subwoofer_active',
+      title: 'Dayton active sub',
+      image: 'platform-subwoofer.png',
       price: 1400,
-      copy: "Powered low-frequency foundation.",
+      copy: 'Powered low-frequency foundation.',
     },
   ],
   enclosure: [
     {
-      id: "ported",
-      title: "Bass reflex",
-      image: "ported.png",
+      id: 'ported',
+      title: 'Bass reflex',
+      image: 'ported.png',
       price: 160,
-      copy: "Vented cabinet for deeper extension.",
+      copy: 'Vented cabinet for deeper extension.',
     },
     {
-      id: "sealed",
-      title: "Sealed",
-      image: "sealed.png",
+      id: 'sealed',
+      title: 'Sealed',
+      image: 'sealed.png',
       price: 120,
-      copy: "Closed cabinet for firmer control.",
+      copy: 'Closed cabinet for firmer control.',
     },
   ],
   character: [
     {
-      id: "tight",
-      title: "Tight",
-      image: "sealed.png",
+      id: 'tight',
+      title: 'Tight',
+      image: 'sealed.png',
       price: 0,
-      copy: "Fast, controlled low end.",
+      copy: 'Fast, controlled low end.',
     },
     {
-      id: "balanced",
-      title: "Balanced",
-      image: "ported.png",
+      id: 'balanced',
+      title: 'Balanced',
+      image: 'ported.png',
       price: 80,
-      copy: "Even weight and control.",
+      copy: 'Even weight and control.',
     },
     {
-      id: "extended",
-      title: "Extended",
-      image: "platform-extended.png",
+      id: 'extended',
+      title: 'Extended',
+      image: 'platform-extended.png',
       price: 160,
-      copy: "More depth and room energy.",
+      copy: 'More depth and room energy.',
     },
   ],
   size: [
     {
-      id: "compact",
-      title: "Compact",
-      image: "platform-compact.png",
+      id: 'compact',
+      title: 'Compact',
+      image: 'platform-compact.png',
       price: 0,
-      copy: "Smallest footprint.",
+      copy: 'Smallest footprint.',
     },
     {
-      id: "standard",
-      title: "Standard",
-      image: "grille-fabric.png",
+      id: 'standard',
+      title: 'Standard',
+      image: 'grille-fabric.png',
       price: 220,
-      copy: "Balanced proportions.",
+      copy: 'Balanced proportions.',
     },
     {
-      id: "large",
-      title: "Large",
-      image: "platform-three-way.png",
+      id: 'large',
+      title: 'Large',
+      image: 'platform-three-way.png',
       price: 520,
-      copy: "More internal volume.",
+      copy: 'More internal volume.',
     },
   ],
   grille: [
     {
-      id: "none",
-      title: "Open",
-      image: "woofer-reference.png",
+      id: 'none',
+      title: 'Open',
+      image: 'woofer-reference.png',
       price: 0,
-      copy: "Drivers remain visible.",
+      copy: 'Drivers remain visible.',
     },
     {
-      id: "magnetic_fabric",
-      title: "Magnetic fabric",
-      image: "grille-fabric.png",
+      id: 'magnetic_fabric',
+      title: 'Magnetic fabric',
+      image: 'grille-fabric.png',
       price: 90,
-      copy: "Soft acoustic protection.",
+      copy: 'Soft acoustic protection.',
     },
     {
-      id: "perforated_metal",
-      title: "Perforated metal",
-      image: "black-ash.png",
+      id: 'perforated_metal',
+      title: 'Perforated metal',
+      image: 'black-ash.png',
       price: 170,
-      copy: "Rigid protective grille.",
+      copy: 'Rigid protective grille.',
     },
   ],
   base: [
     {
-      id: "plinth",
-      title: "Plinth",
-      image: "base-plinth.png",
+      id: 'plinth',
+      title: 'Plinth',
+      image: 'base-plinth.png',
       price: 0,
-      copy: "Grounded floor profile.",
+      copy: 'Grounded floor profile.',
     },
     {
-      id: "slim_feet",
-      title: "Slim feet",
-      image: "platform-extended.png",
+      id: 'slim_feet',
+      title: 'Slim feet',
+      image: 'platform-extended.png',
       price: 60,
-      copy: "Minimal floor lift.",
+      copy: 'Minimal floor lift.',
     },
     {
-      id: "stand",
-      title: "Stand",
-      image: "base-stand.png",
+      id: 'stand',
+      title: 'Stand',
+      image: 'base-stand.png',
       price: 340,
-      copy: "Dedicated standmount support.",
+      copy: 'Dedicated standmount support.',
     },
   ],
   edge: [
     {
-      id: "soft_radius",
-      title: "Soft radius",
-      image: "edge-soft.png",
+      id: 'soft_radius',
+      title: 'Soft radius',
+      image: 'edge-soft.png',
       price: 0,
-      copy: "Gentle rounded edge.",
+      copy: 'Gentle rounded edge.',
     },
     {
-      id: "sculpted_radius",
-      title: "Sculpted radius",
-      image: "black-ash.png",
+      id: 'sculpted_radius',
+      title: 'Sculpted radius',
+      image: 'black-ash.png',
       price: 180,
-      copy: "More pronounced contour.",
+      copy: 'More pronounced contour.',
     },
   ],
   finish: [
     {
-      id: "walnut",
-      title: "Natural walnut",
-      image: "walnut.png",
+      id: 'walnut',
+      title: 'Natural walnut',
+      image: 'walnut.png',
       price: 0,
-      copy: "Warm open-grain veneer.",
+      copy: 'Warm open-grain veneer.',
     },
     {
-      id: "black_ash",
-      title: "Black ash",
-      image: "black-ash.png",
+      id: 'black_ash',
+      title: 'Black ash',
+      image: 'black-ash.png',
       price: 150,
-      copy: "Dark open-grain veneer.",
+      copy: 'Dark open-grain veneer.',
     },
     {
-      id: "satin_white",
-      title: "Satin white",
-      image: "satin-white.png",
+      id: 'satin_white',
+      title: 'Satin white',
+      image: 'satin-white.png',
       price: 120,
-      copy: "Smooth painted surface.",
+      copy: 'Smooth painted surface.',
     },
   ],
   personalisation: [
     {
-      id: "none",
-      title: "None",
-      image: "personalisation-none.png",
+      id: 'none',
+      title: 'None',
+      image: 'personalisation-none.png',
       price: 0,
-      copy: "Uninterrupted cabinet surface.",
+      copy: 'Uninterrupted cabinet surface.',
     },
     {
-      id: "engraving",
-      title: "Engraving",
-      image: "personalisation-engraving.png",
+      id: 'engraving',
+      title: 'Engraving',
+      image: 'personalisation-engraving.png',
       price: 120,
-      copy: "Subtle side-panel maker detail.",
+      copy: 'Subtle side-panel maker detail.',
     },
     {
-      id: "pattern",
-      title: "Pattern",
-      image: "personalisation-pattern.png",
+      id: 'pattern',
+      title: 'Pattern',
+      image: 'personalisation-pattern.png',
       price: 220,
-      copy: "Repeated side-panel motif.",
+      copy: 'Repeated side-panel motif.',
     },
     {
-      id: "printed_panel",
-      title: "Printed panel",
-      image: "personalisation-printed-panel.png",
+      id: 'printed_panel',
+      title: 'Printed panel',
+      image: 'personalisation-printed-panel.png',
       price: 350,
-      copy: "Full side-panel graphic.",
+      copy: 'Full side-panel graphic.',
     },
     {
-      id: "decal",
-      title: "Decal",
-      image: "personalisation-decal.png",
+      id: 'decal',
+      title: 'Decal',
+      image: 'personalisation-decal.png',
       price: 160,
-      copy: "Small side-panel graphic.",
+      copy: 'Small side-panel graphic.',
     },
     {
-      id: "custom_artwork",
-      title: "Custom artwork",
-      image: "personalisation-custom-artwork.png",
+      id: 'custom_artwork',
+      title: 'Custom artwork',
+      image: 'personalisation-custom-artwork.png',
       price: 500,
-      copy: "Artwork prepared for review.",
+      copy: 'Artwork prepared for review.',
     },
   ],
 } as const;
@@ -301,7 +300,7 @@ function Card({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`selection-card${selected ? " selected" : ""}`}
+      className={`selection-card${selected ? ' selected' : ''}`}
     >
       <img src={`/images/components/${item.image}`} alt="" />
       <div className="selection-card-main">
@@ -310,7 +309,7 @@ function Card({
           <span>{item.copy}</span>
           <em>{money(item.price)}</em>
         </div>
-        <i>{selected ? "−" : "+"}</i>
+        <i>{selected ? '−' : '+'}</i>
       </div>
       {selected && (
         <div className="selection-card-details">
@@ -329,109 +328,101 @@ function Card({
 }
 
 export default function CustomDesignBuilder({ products, onBack }: Props) {
-  const ALL_CATEGORIES: Category[] = ["format", "platform", "bass", "cabinet", "finish", "personalisation"];
+  const ALL_CATEGORIES: Category[] = [
+    'format',
+    'platform',
+    'bass',
+    'cabinet',
+    'finish',
+    'personalisation',
+  ];
   const stored = readLocalBuilds();
   const initialBuild =
-    stored?.builds.find((build) => build.id === stored.activeBuildId) ??
-    stored?.builds[0];
+    stored?.builds.find((build) => build.id === stored.activeBuildId) ?? stored?.builds[0];
   const [step, setStep] = useState(0);
-  const [touched, setTouched] = useState<Category[]>(
-    initialBuild ? ALL_CATEGORIES : [],
-  );
+  const [touched, setTouched] = useState<Category[]>(initialBuild ? ALL_CATEGORIES : []);
   const [builds, setBuilds] = useState<LocalBuild[]>(stored?.builds ?? []);
-  const [activeBuildId, setActiveBuildId] = useState(initialBuild?.id ?? "");
-  const [buildName, setBuildName] = useState(
-    initialBuild?.name ?? "Untitled 01",
-  );
+  const [activeBuildId, setActiveBuildId] = useState(initialBuild?.id ?? '');
+  const [buildName, setBuildName] = useState(initialBuild?.name ?? 'Untitled 01');
   const [buildMenuOpen, setBuildMenuOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const [state, setState] = useState({
-    format: initialBuild?.configuration.brief.format ?? "standmount",
-    platform:
-      initialBuild?.configuration.platformId ??
-      ("two_way_compact" as AcousticPlatformId),
-    enclosure: initialBuild?.configuration.bass.alignment ?? "ported",
-    character: initialBuild?.configuration.bass.bassCharacter ?? "balanced",
-    size: initialBuild?.configuration.cabinet.size ?? "standard",
-    grille: initialBuild?.configuration.cabinet.grille ?? "magnetic_fabric",
-    base: initialBuild?.configuration.cabinet.base ?? "stand",
-    edge: initialBuild?.configuration.cabinet.edgeProfile ?? "soft_radius",
-    finish:
-      initialBuild?.configuration.cabinet.finish ??
-      ("walnut" as CabinetFinishId),
+    format: initialBuild?.configuration.brief.format ?? 'standmount',
+    platform: initialBuild?.configuration.platformId ?? ('two_way_compact' as AcousticPlatformId),
+    enclosure: initialBuild?.configuration.bass.alignment ?? 'ported',
+    character: initialBuild?.configuration.bass.bassCharacter ?? 'balanced',
+    size: initialBuild?.configuration.cabinet.size ?? 'standard',
+    grille: initialBuild?.configuration.cabinet.grille ?? 'magnetic_fabric',
+    base: initialBuild?.configuration.cabinet.base ?? 'stand',
+    edge: initialBuild?.configuration.cabinet.edgeProfile ?? 'soft_radius',
+    finish: initialBuild?.configuration.cabinet.finish ?? ('walnut' as CabinetFinishId),
     personalisation:
-      initialBuild?.configuration.personalisation.kind ??
-      ("none" as PersonalisationKind),
+      initialBuild?.configuration.personalisation.kind ?? ('none' as PersonalisationKind),
   });
   const choose = <K extends keyof typeof state>(
     category: Category,
     key: K,
-    value: (typeof state)[K],
+    value: (typeof state)[K]
   ) => {
     setState((current) => ({ ...current, [key]: value }));
-    setTouched((current) =>
-      current.includes(category) ? current : [...current, category],
-    );
+    setTouched((current) => (current.includes(category) ? current : [...current, category]));
   };
   const platform = options.platform.find((item) => item.id === state.platform)!;
   const config = useMemo<CustomSpeakerConfiguration>(() => {
     const bass = platformBass[state.platform];
     return {
       version: 1,
-      name: buildName || "Custom speaker",
+      name: buildName || 'Custom speaker',
       brief: {
-        format: (state.platform === "subwoofer_active"
-          ? "subwoofer"
-          : state.format) as "standmount" | "floorstanding" | "subwoofer",
-        soundProfile: "balanced",
-        roomSize: "medium",
+        format: (state.platform === 'subwoofer_active' ? 'subwoofer' : state.format) as
+          'standmount' | 'floorstanding' | 'subwoofer',
+        soundProfile: 'balanced',
+        roomSize: 'medium',
         listeningDistanceM: 2.5,
       },
       platformId: state.platform,
       bass: {
-        alignment: state.enclosure as "ported" | "sealed",
-        bassCharacter: state.character as "tight" | "balanced" | "extended",
-        ...(state.enclosure === "ported"
-          ? bass
-          : { netVolumeLitres: bass.netVolumeLitres }),
+        alignment: state.enclosure as 'ported' | 'sealed',
+        bassCharacter: state.character as 'tight' | 'balanced' | 'extended',
+        ...(state.enclosure === 'ported' ? bass : { netVolumeLitres: bass.netVolumeLitres }),
       },
       cabinet: {
-        size: state.size as "compact" | "standard" | "large",
+        size: state.size as 'compact' | 'standard' | 'large',
         finish: state.finish,
-        finishFamily: state.finish === "satin_white" ? "paint" : "veneer",
-        grille: state.grille as "none" | "magnetic_fabric" | "perforated_metal",
+        finishFamily: state.finish === 'satin_white' ? 'paint' : 'veneer',
+        grille: state.grille as 'none' | 'magnetic_fabric' | 'perforated_metal',
         base:
-          state.format === "standmount"
-            ? (state.base as "plinth" | "slim_feet" | "stand")
-            : state.base === "stand"
-              ? "slim_feet"
-              : (state.base as "plinth" | "slim_feet"),
-        edgeProfile: state.edge as "soft_radius" | "sculpted_radius",
+          state.format === 'standmount'
+            ? (state.base as 'plinth' | 'slim_feet' | 'stand')
+            : state.base === 'stand'
+              ? 'slim_feet'
+              : (state.base as 'plinth' | 'slim_feet'),
+        edgeProfile: state.edge as 'soft_radius' | 'sculpted_radius',
       },
       personalisation:
-        state.personalisation === "none"
-          ? { kind: "none" }
-          : state.personalisation === "engraving"
+        state.personalisation === 'none'
+          ? { kind: 'none' }
+          : state.personalisation === 'engraving'
             ? {
-                kind: "engraving",
+                kind: 'engraving',
                 engraving: {
-                  text: "ACOUSTOM",
-                  font: "modern_sans",
-                  placement: "side_lower",
+                  text: 'ACOUSTOM',
+                  font: 'modern_sans',
+                  placement: 'side_lower',
                 },
               }
             : {
                 kind: state.personalisation,
                 artwork: {
-                  application: "side_panel",
+                  application: 'side_panel',
                   treatment:
-                    state.personalisation === "pattern"
-                      ? "inlaid_pattern"
-                      : state.personalisation === "printed_panel"
-                        ? "uv_print"
-                        : "matte_decal",
+                    state.personalisation === 'pattern'
+                      ? 'inlaid_pattern'
+                      : state.personalisation === 'printed_panel'
+                        ? 'uv_print'
+                        : 'matte_decal',
                   rightsConfirmed: true,
-                  status: "approved",
+                  status: 'approved',
                 },
               },
     };
@@ -439,16 +430,11 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const validateAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    window.localStorage.setItem(
-      "acoustom-custom-builder-draft",
-      JSON.stringify(config),
-    );
+    window.localStorage.setItem('acoustom-custom-builder-draft', JSON.stringify(config));
     if (!activeBuildId && touched.length === 0) return;
-    const existing = readLocalBuilds()?.builds.find(
-      (build) => build.id === activeBuildId,
-    );
+    const existing = readLocalBuilds()?.builds.find((build) => build.id === activeBuildId);
     const build = existing ?? createLocalBuild(config, buildName);
-    const name = buildName.trim() || "Untitled build";
+    const name = buildName.trim() || 'Untitled build';
     const pending = {
       ...build,
       name,
@@ -469,8 +455,8 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
           const complete = { ...pending, derived: validated.derived, specs: validated.specs };
           upsertLocalBuild(complete);
           window.sessionStorage.setItem(
-            "acoustom-custom-speaker-profile",
-            JSON.stringify(validated.derived.simulationProfile),
+            'acoustom-custom-speaker-profile',
+            JSON.stringify(validated.derived.simulationProfile)
           );
           const synced = await syncBuildToAccount(complete);
           if (controller.signal.aborted) return;
@@ -479,11 +465,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          setValidationError(
-            error instanceof Error
-              ? error.message
-              : "Build validation failed",
-          );
+          setValidationError(error instanceof Error ? error.message : 'Build validation failed');
         });
     }, 400);
     return () => {
@@ -513,24 +495,28 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
   };
   const newBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {
-      window.alert("You have reached the maximum of 20 saved builds. Delete one to create a new build.");
+      window.alert(
+        'You have reached the maximum of 20 saved builds. Delete one to create a new build.'
+      );
       return;
     }
-    setActiveBuildId("");
-    setBuildName(`Untitled ${String(builds.length + 1).padStart(2, "0")}`);
+    setActiveBuildId('');
+    setBuildName(`Untitled ${String(builds.length + 1).padStart(2, '0')}`);
     setTouched([]);
     setStep(0);
   };
   const duplicateBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {
-      window.alert("You have reached the maximum of 20 saved builds. Delete one to create a new build.");
+      window.alert(
+        'You have reached the maximum of 20 saved builds. Delete one to create a new build.'
+      );
       return;
     }
     const source = builds.find((item) => item.id === activeBuildId);
     if (!source) return;
     const copy = createLocalBuild(
       { ...source.configuration, name: `${source.name} copy` },
-      `${source.name} copy`,
+      `${source.name} copy`
     );
     upsertLocalBuild(copy);
     setBuilds(readLocalBuilds()?.builds ?? []);
@@ -544,41 +530,41 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       try {
         await deleteBuildFromAccount(deleted);
       } catch {
-        window.alert(`Could not delete "${buildName}" from your account. It will be removed locally but may still appear when you sign in.`);
+        window.alert(
+          `Could not delete "${buildName}" from your account. It will be removed locally but may still appear when you sign in.`
+        );
       }
     }
     removeLocalBuild(activeBuildId);
     const next = readLocalBuilds();
     const replacement = next?.builds[0];
     setBuilds(next?.builds ?? []);
-    setActiveBuildId(replacement?.id ?? "");
-    setBuildName(replacement?.name ?? "Untitled 01");
+    setActiveBuildId(replacement?.id ?? '');
+    setBuildName(replacement?.name ?? 'Untitled 01');
     setTouched(replacement ? ALL_CATEGORIES : []);
     setStep(replacement ? 7 : 0);
   };
   const selected = [
     {
-      category: "format" as Category,
+      category: 'format' as Category,
       item: options.format.find((x) => x.id === state.format)!,
     },
-    { category: "platform" as Category, item: platform },
+    { category: 'platform' as Category, item: platform },
     {
-      category: "bass" as Category,
+      category: 'bass' as Category,
       item: options.enclosure.find((x) => x.id === state.enclosure)!,
     },
     {
-      category: "cabinet" as Category,
+      category: 'cabinet' as Category,
       item: options.size.find((x) => x.id === state.size)!,
     },
     {
-      category: "finish" as Category,
+      category: 'finish' as Category,
       item: options.finish.find((x) => x.id === state.finish)!,
     },
     {
-      category: "personalisation" as Category,
-      item: options.personalisation.find(
-        (x) => x.id === state.personalisation,
-      )!,
+      category: 'personalisation' as Category,
+      item: options.personalisation.find((x) => x.id === state.personalisation)!,
     },
   ];
   const total =
@@ -588,19 +574,19 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     options.base.find((x) => x.id === state.base)!.price +
     options.edge.find((x) => x.id === state.edge)!.price;
   const steps = [
-    "Listening brief",
-    "Format",
-    "Platform",
-    "Bass",
-    "Cabinet",
-    "Finish",
-    "Personalisation",
-    "Review",
-    "Listening Lab",
+    'Listening brief',
+    'Format',
+    'Platform',
+    'Bass',
+    'Cabinet',
+    'Finish',
+    'Personalisation',
+    'Review',
+    'Listening Lab',
   ];
   useEffect(() => {
-    panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    panelRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
   const group = (label: string, children: ReactNode) => (
     <section className="builder-choice-group">
@@ -625,13 +611,14 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       </main>
     );
   return (
-    <main className="editor-page">
+    <>
+      <main className="editor-page">
       <div className="editor-top">
         <button className="back-link" onClick={onBack}>
           ← Back to collection
         </button>
         <span className="editor-title">
-          CUSTOM SPEAKER /{" "}
+          CUSTOM SPEAKER /{' '}
           <input
             aria-label="Build name"
             value={buildName}
@@ -654,18 +641,10 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
           <button onClick={newBuild} title="New build">
             <Plus size={14} /> New
           </button>
-          <button
-            onClick={duplicateBuild}
-            disabled={!activeBuildId}
-            title="Duplicate build"
-          >
+          <button onClick={duplicateBuild} disabled={!activeBuildId} title="Duplicate build">
             <Copy size={14} /> Duplicate
           </button>
-          <button
-            onClick={deleteBuild}
-            disabled={!activeBuildId}
-            title="Delete build"
-          >
+          <button onClick={deleteBuild} disabled={!activeBuildId} title="Delete build">
             <Trash2 size={14} /> Delete
           </button>
           <div className="build-menu-wrap">
@@ -709,10 +688,10 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
         {steps.map((name, i) => (
           <button
             key={name}
-            className={step === i ? "active" : step > i ? "done" : ""}
+            className={step === i ? 'active' : step > i ? 'done' : ''}
             onClick={() => setStep(i)}
           >
-            <b>{String(i + 1).padStart(2, "0")}</b>
+            <b>{String(i + 1).padStart(2, '0')}</b>
             {name}
           </button>
         ))}
@@ -722,11 +701,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
           {validationError}
         </div>
       )}
-      <section
-        className={
-          step === 0 ? "editor-workspace brief-workspace" : "editor-workspace"
-        }
-      >
+      <section className={step === 0 ? 'editor-workspace brief-workspace' : 'editor-workspace'}>
         <div className="editor-stage">
           {touched.length > 0 && (
             <div className="stage-build-strip">
@@ -751,9 +726,9 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
           {touched.length > 0 ? (
             <ProceduralSpeaker
               config={config}
-              showDrivers={touched.includes("platform")}
-              showBass={touched.includes("bass")}
-              showPersonalisation={touched.includes("personalisation")}
+              showDrivers={touched.includes('platform')}
+              showBass={touched.includes('bass')}
+              showPersonalisation={touched.includes('personalisation')}
             />
           ) : (
             <div className="empty-3d-state">
@@ -773,8 +748,8 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
                 <p className="eyebrow">Optional starting point</p>
                 <h2>What would make you love your next speaker?</h2>
                 <p>
-                  Choose anything that sounds like you. We will use it only to
-                  set helpful starting choices.
+                  Choose anything that sounds like you. We will use it only to set helpful starting
+                  choices.
                 </p>
               </div>
               <div className="brief-question">
@@ -814,191 +789,152 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
               <div className="brief-question">
                 <span>You would like the speaker to feel…</span>
                 <div className="brief-options two-up">
-                  <button
-                    onClick={() => choose("format", "format", "standmount")}
-                  >
+                  <button onClick={() => choose('format', 'format', 'standmount')}>
                     <span>Discreet</span>
                     <small>Compact and easy to live with</small>
                   </button>
-                  <button
-                    onClick={() => choose("format", "format", "floorstanding")}
-                  >
+                  <button onClick={() => choose('format', 'format', 'floorstanding')}>
                     <span>Confident</span>
                     <small>A more physical presence</small>
                   </button>
                 </div>
               </div>
               <p className="optional-note">
-                Nothing here is required. Continue to choose the specification
-                yourself.
+                Nothing here is required. Continue to choose the specification yourself.
               </p>
             </div>
           )}
           {step === 1 &&
             group(
-              "Choose a format",
+              'Choose a format',
               options.format.map((item) => (
                 <Card
                   key={item.id}
                   item={item}
-                  selected={
-                    touched.includes("format") && state.format === item.id
-                  }
-                  onClick={() => choose("format", "format", item.id)}
+                  selected={touched.includes('format') && state.format === item.id}
+                  onClick={() => choose('format', 'format', item.id)}
                 />
-              )),
+              ))
             )}
           {step === 2 &&
             group(
-              "Choose an acoustic platform",
+              'Choose an acoustic platform',
               options.platform.map((item) => (
                 <Card
                   key={item.id}
                   item={item}
-                  selected={
-                    touched.includes("platform") && state.platform === item.id
-                  }
-                  onClick={() =>
-                    choose(
-                      "platform",
-                      "platform",
-                      item.id as AcousticPlatformId,
-                    )
-                  }
+                  selected={touched.includes('platform') && state.platform === item.id}
+                  onClick={() => choose('platform', 'platform', item.id as AcousticPlatformId)}
                 />
-              )),
+              ))
             )}
           {step === 3 && (
             <>
               {group(
-                "Enclosure",
+                'Enclosure',
                 options.enclosure.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    selected={
-                      touched.includes("bass") && state.enclosure === item.id
-                    }
-                    onClick={() => choose("bass", "enclosure", item.id)}
+                    selected={touched.includes('bass') && state.enclosure === item.id}
+                    onClick={() => choose('bass', 'enclosure', item.id)}
                   />
-                )),
+                ))
               )}
               {group(
-                "Bass character",
+                'Bass character',
                 options.character.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    selected={
-                      touched.includes("bass") && state.character === item.id
-                    }
-                    onClick={() => choose("bass", "character", item.id)}
+                    selected={touched.includes('bass') && state.character === item.id}
+                    onClick={() => choose('bass', 'character', item.id)}
                   />
-                )),
+                ))
               )}
             </>
           )}
           {step === 4 && (
             <>
               {group(
-                "Cabinet size",
+                'Cabinet size',
                 options.size.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    selected={
-                      touched.includes("cabinet") && state.size === item.id
-                    }
-                    onClick={() => choose("cabinet", "size", item.id)}
+                    selected={touched.includes('cabinet') && state.size === item.id}
+                    onClick={() => choose('cabinet', 'size', item.id)}
                   />
-                )),
+                ))
               )}
               {group(
-                "Grille",
+                'Grille',
                 options.grille.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    selected={
-                      touched.includes("cabinet") && state.grille === item.id
-                    }
-                    onClick={() => choose("cabinet", "grille", item.id)}
+                    selected={touched.includes('cabinet') && state.grille === item.id}
+                    onClick={() => choose('cabinet', 'grille', item.id)}
                   />
-                )),
+                ))
               )}
               {group(
-                "Base",
+                'Base',
                 options.base.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    disabled={
-                      item.id === "stand" && state.format !== "standmount"
-                    }
-                    selected={
-                      touched.includes("cabinet") && state.base === item.id
-                    }
-                    onClick={() => choose("cabinet", "base", item.id)}
+                    disabled={item.id === 'stand' && state.format !== 'standmount'}
+                    selected={touched.includes('cabinet') && state.base === item.id}
+                    onClick={() => choose('cabinet', 'base', item.id)}
                   />
-                )),
+                ))
               )}
               {group(
-                "Edge profile",
+                'Edge profile',
                 options.edge.map((item) => (
                   <Card
                     key={item.id}
                     item={item}
-                    selected={
-                      touched.includes("cabinet") && state.edge === item.id
-                    }
-                    onClick={() => choose("cabinet", "edge", item.id)}
+                    selected={touched.includes('cabinet') && state.edge === item.id}
+                    onClick={() => choose('cabinet', 'edge', item.id)}
                   />
-                )),
+                ))
               )}
             </>
           )}
           {step === 5 &&
             group(
-              "Choose a finish",
+              'Choose a finish',
               options.finish.map((item) => (
                 <Card
                   key={item.id}
                   item={item}
-                  selected={
-                    touched.includes("finish") && state.finish === item.id
-                  }
-                  onClick={() =>
-                    choose("finish", "finish", item.id as CabinetFinishId)
-                  }
+                  selected={touched.includes('finish') && state.finish === item.id}
+                  onClick={() => choose('finish', 'finish', item.id as CabinetFinishId)}
                 />
-              )),
+              ))
             )}
           {step === 6 &&
             group(
-              "Choose a treatment",
+              'Choose a treatment',
               options.personalisation.map((item) => (
                 <Card
                   key={item.id}
                   item={item}
                   selected={
-                    touched.includes("personalisation") &&
-                    state.personalisation === item.id
+                    touched.includes('personalisation') && state.personalisation === item.id
                   }
                   onClick={() =>
-                    choose(
-                      "personalisation",
-                      "personalisation",
-                      item.id as PersonalisationKind,
-                    )
+                    choose('personalisation', 'personalisation', item.id as PersonalisationKind)
                   }
                 />
-              )),
+              ))
             )}
           {step === 7 && (
             <div className="review-summary">
               <p className="panel-copy">
-                Review the selected components, then open this exact speaker in
-                the Listening Lab.
+                Review the selected components, then open this exact speaker in the Listening Lab.
               </p>
               <div className="review-parts">
                 {selected.map((row) => (
@@ -1019,22 +955,17 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
             </div>
           )}
           <div className="panel-footer">
-            <button
-              onClick={() => setStep(Math.max(0, step - 1))}
-              disabled={step === 0}
-            >
+            <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
               ← Previous
             </button>
-            <button
-              className="next-button"
-              onClick={() => setStep(Math.min(8, step + 1))}
-            >
-              {step === 7 ? "Open Listening Lab" : "Continue"}{" "}
-              <ArrowRight size={15} />
+            <button className="next-button" onClick={() => setStep(Math.min(8, step + 1))}>
+              {step === 7 ? 'Open Listening Lab' : 'Continue'} <ArrowRight size={15} />
             </button>
           </div>
         </aside>
       </section>
-    </main>
+      </main>
+      <BuildSheetExporter />
+    </>
   );
 }

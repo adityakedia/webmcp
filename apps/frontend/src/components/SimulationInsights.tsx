@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { RoomDimensions, SimulationResult } from '@acoustom/types';
 
 type Props = { result: SimulationResult | null; room: RoomDimensions; speakerName: string | null };
-const roomLabel = (rt60: number) => rt60 < .45 ? 'Controlled' : rt60 < .7 ? 'Balanced' : 'Lively';
+const roomLabel = (rt60: number) =>
+  rt60 < 0.45 ? 'Controlled' : rt60 < 0.7 ? 'Balanced' : 'Lively';
 const modeFrequencies = (room: RoomDimensions) => [
   { label: 'Width', value: 343 / (2 * room.width) },
   { label: 'Length', value: 343 / (2 * room.length) },
@@ -11,16 +12,188 @@ const modeFrequencies = (room: RoomDimensions) => [
 
 function DecayChart({ rt60, expanded = false }: { rt60: number; expanded?: boolean }) {
   const duration = Math.max(1.2, rt60 * 1.35);
-  const points = Array.from({ length: 41 }, (_, i) => `${i / 40 * 100},${Math.max(7, 92 - (60 * (i / 40 * duration) / rt60) * 1.35)}`).join(' ');
-  return <div className={`insight-chart decay-chart ${expanded ? 'expanded' : ''}`}><svg viewBox="0 0 100 100" role="img" aria-label={`Estimated decay to minus 60 decibels at ${rt60.toFixed(2)} seconds`} preserveAspectRatio="none"><path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" /><polyline className="chart-line" points={points} /><line className="chart-marker" x1={rt60 / duration * 100} x2={rt60 / duration * 100} y1="7" y2="93" /></svg><span className="chart-axis-label chart-axis-left">0 dB</span><span className="chart-axis-label chart-axis-bottom">time / seconds</span><span className="chart-axis-label chart-axis-right">−60 dB</span></div>;
+  const points = Array.from(
+    { length: 41 },
+    (_, i) => `${(i / 40) * 100},${Math.max(7, 92 - ((60 * ((i / 40) * duration)) / rt60) * 1.35)}`
+  ).join(' ');
+  return (
+    <div className={`insight-chart decay-chart ${expanded ? 'expanded' : ''}`}>
+      <svg
+        viewBox="0 0 100 100"
+        role="img"
+        aria-label={`Estimated decay to minus 60 decibels at ${rt60.toFixed(2)} seconds`}
+        preserveAspectRatio="none"
+      >
+        <path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" />
+        <polyline className="chart-line" points={points} />
+        <line
+          className="chart-marker"
+          x1={(rt60 / duration) * 100}
+          x2={(rt60 / duration) * 100}
+          y1="7"
+          y2="93"
+        />
+      </svg>
+      <span className="chart-axis-label chart-axis-left">0 dB</span>
+      <span className="chart-axis-label chart-axis-bottom">time / seconds</span>
+      <span className="chart-axis-label chart-axis-right">−60 dB</span>
+    </div>
+  );
 }
 
-function ModeChart({ room }: { room: RoomDimensions }) { const modes = modeFrequencies(room); const max = 120; return <div className="insight-chart mode-chart"><svg viewBox="0 0 360 150" role="img" aria-label="Estimated first axial room modes"><line className="mode-axis" x1="25" y1="120" x2="345" y2="120" />{[0, 40, 80, 120].map((tick) => <text key={tick} x={25 + tick / max * 320} y="140" textAnchor="middle">{tick} Hz</text>)}{modes.map((mode) => { const x = 25 + Math.min(mode.value, max) / max * 320; return <g key={mode.label}><line className="mode-line" x1={x} y1="25" x2={x} y2="120" /><text x={x} y="18" textAnchor="middle">{mode.value.toFixed(0)} Hz</text><text className="mode-name" x={x} y="110" textAnchor="middle">{mode.label}</text></g>; })}</svg></div>; }
+function ModeChart({ room }: { room: RoomDimensions }) {
+  const modes = modeFrequencies(room);
+  const max = 120;
+  return (
+    <div className="insight-chart mode-chart">
+      <svg viewBox="0 0 360 150" role="img" aria-label="Estimated first axial room modes">
+        <line className="mode-axis" x1="25" y1="120" x2="345" y2="120" />
+        {[0, 40, 80, 120].map((tick) => (
+          <text key={tick} x={25 + (tick / max) * 320} y="140" textAnchor="middle">
+            {tick} Hz
+          </text>
+        ))}
+        {modes.map((mode) => {
+          const x = 25 + (Math.min(mode.value, max) / max) * 320;
+          return (
+            <g key={mode.label}>
+              <line className="mode-line" x1={x} y1="25" x2={x} y2="120" />
+              <text x={x} y="18" textAnchor="middle">
+                {mode.value.toFixed(0)} Hz
+              </text>
+              <text className="mode-name" x={x} y="110" textAnchor="middle">
+                {mode.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
 
 export default function SimulationInsights({ result, room, speakerName }: Props) {
   const [openResult, setOpenResult] = useState<SimulationResult | null>(null);
   const open = openResult === result;
-  const rt60 = result?.metrics.rt60 ?? null; const modes = useMemo(() => modeFrequencies(room), [room]); if (rt60 === null) return null;
-  const character = roomLabel(rt60); const primaryMode = Math.min(...modes.map((mode) => mode.value));
-  return <><section className="simulation-insights" aria-label="Acoustic overview"><div className="insights-heading"><div><p className="eyebrow">Acoustic readout</p><h2>What the room is doing</h2></div><button className="insights-expand" onClick={() => setOpenResult(result)}>Explore data <span>↗</span></button></div><div className="insight-overview"><div className="insight-metric"><span>Estimated RT60</span><strong>{rt60.toFixed(2)} s</strong><small>{character} decay</small></div><div className="insight-metric"><span>First room mode</span><strong>{primaryMode.toFixed(0)} Hz</strong><small>Low-frequency resonance</small></div><div className="insight-summary"><span>{speakerName ?? 'Selected speaker'} in your room</span><p>{character === 'Lively' ? 'Longer decay may make music feel spacious, but can soften detail.' : character === 'Controlled' ? 'Shorter decay supports precise detail and a tighter presentation.' : 'A balanced decay supports clarity while retaining natural ambience.'}</p></div></div><div className="insight-mini-grid"><div><div className="insight-title"><span>Energy decay</span><small>modelled</small></div><DecayChart rt60={rt60} /></div><div><div className="insight-title"><span>Room modes</span><small>estimated</small></div><ModeChart room={room} /></div></div><p className="insight-disclaimer">Modelled estimates from room dimensions and the simulated impulse response—not a substitute for in-room microphone measurement.</p></section>{open && <div className="insight-modal-backdrop" onClick={() => setOpenResult(null)}><section className="insight-modal" role="dialog" aria-modal="true" aria-labelledby="insight-modal-title" onClick={(event) => event.stopPropagation()}><div className="insights-heading"><div><p className="eyebrow">Expanded analysis</p><h2 id="insight-modal-title">Acoustic readout</h2></div><button className="modal-close" onClick={() => setOpenResult(null)} aria-label="Close expanded analysis">×</button></div><div className="modal-metric-row"><div><span>RT60</span><strong>{rt60.toFixed(2)} s</strong></div><div><span>Room character</span><strong>{character}</strong></div><div><span>Primary mode</span><strong>{primaryMode.toFixed(0)} Hz</strong></div></div><div className="modal-chart-block"><div className="insight-title"><span>Energy decay profile</span><small>−60 dB reference</small></div><DecayChart rt60={rt60} expanded /></div><div className="modal-chart-block"><div className="insight-title"><span>First axial room modes</span><small>{room.width} × {room.length} × {room.height} m</small></div><ModeChart room={room} /></div><p className="insight-disclaimer">Use these values to compare placements and room presets consistently. Final acoustic performance should be verified with measurements.</p></section></div>}</>;
+  const rt60 = result?.metrics.rt60 ?? null;
+  const modes = useMemo(() => modeFrequencies(room), [room]);
+  if (rt60 === null) return null;
+  const character = roomLabel(rt60);
+  const primaryMode = Math.min(...modes.map((mode) => mode.value));
+  return (
+    <>
+      <section className="simulation-insights" aria-label="Acoustic overview">
+        <div className="insights-heading">
+          <div>
+            <p className="eyebrow">Acoustic readout</p>
+            <h2>What the room is doing</h2>
+          </div>
+          <button className="insights-expand" onClick={() => setOpenResult(result)}>
+            Explore data <span>↗</span>
+          </button>
+        </div>
+        <div className="insight-overview">
+          <div className="insight-metric">
+            <span>Estimated RT60</span>
+            <strong>{rt60.toFixed(2)} s</strong>
+            <small>{character} decay</small>
+          </div>
+          <div className="insight-metric">
+            <span>First room mode</span>
+            <strong>{primaryMode.toFixed(0)} Hz</strong>
+            <small>Low-frequency resonance</small>
+          </div>
+          <div className="insight-summary">
+            <span>{speakerName ?? 'Selected speaker'} in your room</span>
+            <p>
+              {character === 'Lively'
+                ? 'Longer decay may make music feel spacious, but can soften detail.'
+                : character === 'Controlled'
+                  ? 'Shorter decay supports precise detail and a tighter presentation.'
+                  : 'A balanced decay supports clarity while retaining natural ambience.'}
+            </p>
+          </div>
+        </div>
+        <div className="insight-mini-grid">
+          <div>
+            <div className="insight-title">
+              <span>Energy decay</span>
+              <small>modelled</small>
+            </div>
+            <DecayChart rt60={rt60} />
+          </div>
+          <div>
+            <div className="insight-title">
+              <span>Room modes</span>
+              <small>estimated</small>
+            </div>
+            <ModeChart room={room} />
+          </div>
+        </div>
+        <p className="insight-disclaimer">
+          Modelled estimates from room dimensions and the simulated impulse response—not a
+          substitute for in-room microphone measurement.
+        </p>
+      </section>
+      {open && (
+        <div className="insight-modal-backdrop" onClick={() => setOpenResult(null)}>
+          <section
+            className="insight-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="insight-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="insights-heading">
+              <div>
+                <p className="eyebrow">Expanded analysis</p>
+                <h2 id="insight-modal-title">Acoustic readout</h2>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => setOpenResult(null)}
+                aria-label="Close expanded analysis"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-metric-row">
+              <div>
+                <span>RT60</span>
+                <strong>{rt60.toFixed(2)} s</strong>
+              </div>
+              <div>
+                <span>Room character</span>
+                <strong>{character}</strong>
+              </div>
+              <div>
+                <span>Primary mode</span>
+                <strong>{primaryMode.toFixed(0)} Hz</strong>
+              </div>
+            </div>
+            <div className="modal-chart-block">
+              <div className="insight-title">
+                <span>Energy decay profile</span>
+                <small>−60 dB reference</small>
+              </div>
+              <DecayChart rt60={rt60} expanded />
+            </div>
+            <div className="modal-chart-block">
+              <div className="insight-title">
+                <span>First axial room modes</span>
+                <small>
+                  {room.width} × {room.length} × {room.height} m
+                </small>
+              </div>
+              <ModeChart room={room} />
+            </div>
+            <p className="insight-disclaimer">
+              Use these values to compare placements and room presets consistently. Final acoustic
+              performance should be verified with measurements.
+            </p>
+          </section>
+        </div>
+      )}
+    </>
+  );
 }

@@ -19,7 +19,7 @@ export const neonAuth = neonAuthInstance?.adapter ?? null;
 export async function getNeonJwt(): Promise<string | null> {
   if (!neonAuthInstance) return null;
   try {
-    return await neonAuthInstance.getJWTToken() ?? null;
+    return (await neonAuthInstance.getJWTToken()) ?? null;
   } catch {
     return null;
   }

@@ -26,7 +26,11 @@ export function useAutoSimulation() {
         if (sequence === requestSequence.current) setSimulationState('ready', result);
       } catch (error) {
         if (controller.signal.aborted || sequence !== requestSequence.current) return;
-        setSimulationState('error', null, error instanceof Error ? error.message : 'Room simulation failed.');
+        setSimulationState(
+          'error',
+          null,
+          error instanceof Error ? error.message : 'Room simulation failed.'
+        );
       }
     }, DEBOUNCE_MS);
 
@@ -34,5 +38,13 @@ export function useAutoSimulation() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [listenerPosition, roomDimensions, runSimulation, selectedSpeakerId, setSimulationState, simulationRequestVersion, speakerPositions]);
+  }, [
+    listenerPosition,
+    roomDimensions,
+    runSimulation,
+    selectedSpeakerId,
+    setSimulationState,
+    simulationRequestVersion,
+    speakerPositions,
+  ]);
 }

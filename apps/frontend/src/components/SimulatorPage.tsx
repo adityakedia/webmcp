@@ -8,20 +8,225 @@ import SimulationInsights from './SimulationInsights';
 import RoomReferenceInput from './RoomReferenceInput';
 import RoomScene from './RoomScene';
 
-type Props = { products: Product[]; onBack: () => void; customBuild?: { name: string; format: string; finish: string; referenceName: string } | null; embedded?: boolean };
-const presets = [{ id: 'living_room', name: 'Living room', copy: 'Balanced and natural.' }, { id: 'reflective', name: 'Lively room', copy: 'Brighter, longer decay.' }, { id: 'absorptive', name: 'Treated room', copy: 'Softer, controlled decay.' }] as const;
+type Props = {
+  products: Product[];
+  onBack: () => void;
+  customBuild?: { name: string; format: string; finish: string; referenceName: string } | null;
+  embedded?: boolean;
+};
+const presets = [
+  { id: 'living_room', name: 'Living room', copy: 'Balanced and natural.' },
+  { id: 'reflective', name: 'Lively room', copy: 'Brighter, longer decay.' },
+  { id: 'absorptive', name: 'Treated room', copy: 'Softer, controlled decay.' },
+] as const;
 
-export default function SimulatorPage({ products, onBack, customBuild = null, embedded = false }: Props) {
-  const selectedSpeakerId = useSimulationStore((state) => state.selectedSpeakerId); const room = useSimulationStore((state) => state.roomDimensions); const speakers = useSimulationStore((state) => state.speakerPositions); const listener = useSimulationStore((state) => state.listenerPosition); const status = useSimulationStore((state) => state.simulationStatus); const result = useSimulationStore((state) => state.simulationResult); const error = useSimulationStore((state) => state.simulationError); const setSelectedSpeaker = useSimulationStore((state) => state.setSelectedSpeaker); const setRoomDimensions = useSimulationStore((state) => state.setRoomDimensions); const retry = useSimulationStore((state) => state.retrySimulation);
-  const selectedProduct = products.find((product) => product.name === selectedSpeakerId); const isCustomBuild = selectedSpeakerId === 'custom-reference' && customBuild; const activePreset = presets.find((preset) => preset.id === room.presetId) ?? presets[0];
+export default function SimulatorPage({
+  products,
+  onBack,
+  customBuild = null,
+  embedded = false,
+}: Props) {
+  const selectedSpeakerId = useSimulationStore((state) => state.selectedSpeakerId);
+  const room = useSimulationStore((state) => state.roomDimensions);
+  const speakers = useSimulationStore((state) => state.speakerPositions);
+  const listener = useSimulationStore((state) => state.listenerPosition);
+  const status = useSimulationStore((state) => state.simulationStatus);
+  const result = useSimulationStore((state) => state.simulationResult);
+  const error = useSimulationStore((state) => state.simulationError);
+  const setSelectedSpeaker = useSimulationStore((state) => state.setSelectedSpeaker);
+  const setRoomDimensions = useSimulationStore((state) => state.setRoomDimensions);
+  const retry = useSimulationStore((state) => state.retrySimulation);
+  const selectedProduct = products.find((product) => product.name === selectedSpeakerId);
+  const isCustomBuild = selectedSpeakerId === 'custom-reference' && customBuild;
+  const activePreset = presets.find((preset) => preset.id === room.presetId) ?? presets[0];
   useAutoSimulation();
-  useEffect(() => { const requested = window.sessionStorage.getItem('acoustom-preview-speaker'); const requestedProduct = products.find((product) => product.name === requested); if (customBuild && selectedSpeakerId !== 'custom-reference') { setSelectedSpeaker('custom-reference'); } else if (requestedProduct && selectedSpeakerId !== requestedProduct.name) { setSelectedSpeaker(requestedProduct.name); window.sessionStorage.removeItem('acoustom-preview-speaker'); } else if (!selectedSpeakerId && products[0]) setSelectedSpeaker(products[0].name); }, [customBuild, products, selectedSpeakerId, setSelectedSpeaker]);
-  return <section className={`lab-page${embedded ? ' lab-page-embedded' : ''}`}><header className="lab-heading"><div><button className="back-link" onClick={onBack}>{customBuild ? '← Back to design review' : '← Back to collection'}</button><p className="eyebrow">Acoustom listening lab</p><h1>{customBuild ? <>Hear your<br /><em>custom build.</em></> : <>Build your<br /><em>listening room.</em></>}</h1><p>{customBuild ? 'Your validated custom build is loaded below. Place it in your room, then compare a reference track with its modeled room response.' : 'Choose a speaker, set the essentials, then compare a reference track with your room response.'}</p></div><div className={`lab-status ${status}`}><span />{status === 'ready' ? `Room response ready · RT60 ${result?.metrics.rt60.toFixed(2)} s` : status === 'simulating' ? 'Updating room response…' : status === 'error' ? error ?? 'Simulation unavailable' : 'Set your room to begin'}</div></header>
-    <section className="listening-lab-grid">
-      <aside className="lab-speaker-panel"><p className="lab-panel-label">Selected speaker</p><div className="speaker-select-wrap"><select aria-label="Choose speaker" value={selectedSpeakerId ?? ''} onChange={(event) => setSelectedSpeaker(event.target.value)}>{customBuild && <option value="custom-reference">{customBuild.name} · Custom build</option>}{products.map((product) => <option key={product.name} value={product.name}>{product.name}</option>)}</select><ChevronDown size={16} /></div>{isCustomBuild ? <article className="selected-speaker-card custom-build-card"><img src="/images/components/woofer-reference.png" alt="Woofer driver used as the custom build component preview" /><div><p>Validated custom build</p><h2>{customBuild.name}</h2><span>{customBuild.format} · {customBuild.finish.replace('_', ' ')}</span><strong>{customBuild.referenceName}</strong></div><dl><div><dt>Simulation profile</dt><dd>Custom reference</dd></div><div><dt>Room model</dt><dd>Auto-updating</dd></div></dl></article> : selectedProduct ? <article className="selected-speaker-card"><img src={selectedProduct.image} alt={selectedProduct.name} /><div><p>{selectedProduct.tone}</p><h2>{selectedProduct.name}</h2><span>{selectedProduct.type}</span><strong>{selectedProduct.price}</strong></div><dl>{selectedProduct.specs.slice(0, 3).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl></article> : <div className="selected-speaker-card empty">Select a catalog speaker to start.</div>}<p className="speaker-panel-note">The selected model drives the room response. Choose a different speaker to compare its profile in the same room.</p></aside>
-      <section className="lab-room-stage"><div className="stage-title"><div><p className="lab-panel-label">Your room</p><strong>{room.width.toFixed(1)} × {room.length.toFixed(1)} × {room.height.toFixed(1)} m</strong></div><span>{activePreset.name}</span></div><RoomScene room={room} speakers={speakers} listener={listener} /><AudioPlayer /></section>
-      <aside className="lab-room-panel"><p className="lab-panel-label">Room essentials</p><div className="room-inputs">{(['width', 'length', 'height'] as const).map((key) => <label key={key}><span>{key}</span><input type="number" min="2" max={key === 'height' ? 10 : 20} step=".1" value={room[key]} onChange={(event) => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value)) setRoomDimensions({ [key]: value }); }} /><em>m</em></label>)}</div><div className="room-presets">{presets.map((preset) => <button key={preset.id} className={room.presetId === preset.id ? 'selected' : ''} onClick={() => setRoomDimensions({ presetId: preset.id })}><b>{preset.name}</b><span>{preset.copy}</span></button>)}</div><RoomReferenceInput /><button className="refresh-room" onClick={retry}><RotateCcw size={14} /> Refresh simulation</button><p className="room-control-note">Drag the room to inspect the layout. Room settings remain editable at any time.</p></aside>
+  useEffect(() => {
+    const requested = window.sessionStorage.getItem('acoustom-preview-speaker');
+    const requestedProduct = products.find((product) => product.name === requested);
+    if (customBuild && selectedSpeakerId !== 'custom-reference') {
+      setSelectedSpeaker('custom-reference');
+    } else if (requestedProduct && selectedSpeakerId !== requestedProduct.name) {
+      setSelectedSpeaker(requestedProduct.name);
+      window.sessionStorage.removeItem('acoustom-preview-speaker');
+    } else if (!selectedSpeakerId && products[0]) setSelectedSpeaker(products[0].name);
+  }, [customBuild, products, selectedSpeakerId, setSelectedSpeaker]);
+  return (
+    <section className={`lab-page${embedded ? ' lab-page-embedded' : ''}`}>
+      <header className="lab-heading">
+        <div>
+          <button className="back-link" onClick={onBack}>
+            {customBuild ? '← Back to design review' : '← Back to collection'}
+          </button>
+          <p className="eyebrow">Acoustom listening lab</p>
+          <h1>
+            {customBuild ? (
+              <>
+                Hear your
+                <br />
+                <em>custom build.</em>
+              </>
+            ) : (
+              <>
+                Build your
+                <br />
+                <em>listening room.</em>
+              </>
+            )}
+          </h1>
+          <p>
+            {customBuild
+              ? 'Your validated custom build is loaded below. Place it in your room, then compare a reference track with its modeled room response.'
+              : 'Choose a speaker, set the essentials, then compare a reference track with your room response.'}
+          </p>
+        </div>
+        <div className={`lab-status ${status}`}>
+          <span />
+          {status === 'ready'
+            ? `Room response ready · RT60 ${result?.metrics.rt60.toFixed(2)} s`
+            : status === 'simulating'
+              ? 'Updating room response…'
+              : status === 'error'
+                ? (error ?? 'Simulation unavailable')
+                : 'Set your room to begin'}
+        </div>
+      </header>
+      <section className="listening-lab-grid">
+        <aside className="lab-speaker-panel">
+          <p className="lab-panel-label">Selected speaker</p>
+          <div className="speaker-select-wrap">
+            <select
+              aria-label="Choose speaker"
+              value={selectedSpeakerId ?? ''}
+              onChange={(event) => setSelectedSpeaker(event.target.value)}
+            >
+              {customBuild && (
+                <option value="custom-reference">{customBuild.name} · Custom build</option>
+              )}
+              {products.map((product) => (
+                <option key={product.name} value={product.name}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} />
+          </div>
+          {isCustomBuild ? (
+            <article className="selected-speaker-card custom-build-card">
+              <img
+                src="/images/components/woofer-reference.png"
+                alt="Woofer driver used as the custom build component preview"
+              />
+              <div>
+                <p>Validated custom build</p>
+                <h2>{customBuild.name}</h2>
+                <span>
+                  {customBuild.format} · {customBuild.finish.replace('_', ' ')}
+                </span>
+                <strong>{customBuild.referenceName}</strong>
+              </div>
+              <dl>
+                <div>
+                  <dt>Simulation profile</dt>
+                  <dd>Custom reference</dd>
+                </div>
+                <div>
+                  <dt>Room model</dt>
+                  <dd>Auto-updating</dd>
+                </div>
+              </dl>
+            </article>
+          ) : selectedProduct ? (
+            <article className="selected-speaker-card">
+              <img src={selectedProduct.image} alt={selectedProduct.name} />
+              <div>
+                <p>{selectedProduct.tone}</p>
+                <h2>{selectedProduct.name}</h2>
+                <span>{selectedProduct.type}</span>
+                <strong>{selectedProduct.price}</strong>
+              </div>
+              <dl>
+                {selectedProduct.specs.slice(0, 3).map(([name, value]) => (
+                  <div key={name}>
+                    <dt>{name}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ) : (
+            <div className="selected-speaker-card empty">Select a catalog speaker to start.</div>
+          )}
+          <p className="speaker-panel-note">
+            The selected model drives the room response. Choose a different speaker to compare its
+            profile in the same room.
+          </p>
+        </aside>
+        <section className="lab-room-stage">
+          <div className="stage-title">
+            <div>
+              <p className="lab-panel-label">Your room</p>
+              <strong>
+                {room.width.toFixed(1)} × {room.length.toFixed(1)} × {room.height.toFixed(1)} m
+              </strong>
+            </div>
+            <span>{activePreset.name}</span>
+          </div>
+          <RoomScene room={room} speakers={speakers} listener={listener} />
+          <AudioPlayer />
+        </section>
+        <aside className="lab-room-panel">
+          <p className="lab-panel-label">Room essentials</p>
+          <div className="room-inputs">
+            {(['width', 'length', 'height'] as const).map((key) => (
+              <label key={key}>
+                <span>{key}</span>
+                <input
+                  type="number"
+                  min="2"
+                  max={key === 'height' ? 10 : 20}
+                  step=".1"
+                  value={room[key]}
+                  onChange={(event) => {
+                    const value = event.currentTarget.valueAsNumber;
+                    if (Number.isFinite(value)) setRoomDimensions({ [key]: value });
+                  }}
+                />
+                <em>m</em>
+              </label>
+            ))}
+          </div>
+          <div className="room-presets">
+            {presets.map((preset) => (
+              <button
+                key={preset.id}
+                className={room.presetId === preset.id ? 'selected' : ''}
+                onClick={() => setRoomDimensions({ presetId: preset.id })}
+              >
+                <b>{preset.name}</b>
+                <span>{preset.copy}</span>
+              </button>
+            ))}
+          </div>
+          <RoomReferenceInput />
+          <button className="refresh-room" onClick={retry}>
+            <RotateCcw size={14} /> Refresh simulation
+          </button>
+          <p className="room-control-note">
+            Drag the room to inspect the layout. Room settings remain editable at any time.
+          </p>
+        </aside>
+      </section>
+      {result && (
+        <SimulationInsights
+          result={result}
+          room={room}
+          speakerName={
+            isCustomBuild
+              ? customBuild.name
+              : (selectedProduct?.name ?? selectedSpeakerId ?? 'Selected speaker')
+          }
+        />
+      )}
     </section>
-    {result && <SimulationInsights result={result} room={room} speakerName={isCustomBuild ? customBuild.name : selectedProduct?.name ?? selectedSpeakerId ?? 'Selected speaker'} />}
-  </section>;
+  );
 }

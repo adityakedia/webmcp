@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type React from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type React from 'react';
 import {
   Box,
   ChevronDown,
@@ -15,27 +15,19 @@ import {
   Waves,
   Weight,
   X,
-} from "lucide-react";
-import type {
-  CustomSpeakerConfiguration,
-  SimulationResult,
-} from "@acoustom/types";
-import type { Product } from "../App";
-import { apiUrl } from "../lib/api";
-import { readLocalBuilds, type LocalBuild } from "../lib/localBuilds";
-import { renderSimulatedWav } from "../lib/simulatedAudio";
+} from 'lucide-react';
+import type { CustomSpeakerConfiguration, SimulationResult } from '@acoustom/types';
+import type { Product } from '../App';
+import { apiUrl } from '../lib/api';
+import { readLocalBuilds, type LocalBuild } from '../lib/localBuilds';
+import { renderSimulatedWav } from '../lib/simulatedAudio';
 type Props = {
   products: Product[];
   onBack: () => void;
-  onPreview: (p: Product) => void;
 };
 type Profile = {
-  status: "reference_ready" | "component_model_ready" | "requires_measurement";
-  referenceId:
-    | "two_way_compact"
-    | "two_way_extended"
-    | "three_way_reference"
-    | "subwoofer_active";
+  status: 'reference_ready' | 'component_model_ready' | 'requires_measurement';
+  referenceId: 'two_way_compact' | 'two_way_extended' | 'three_way_reference' | 'subwoofer_active';
   modelInputs?: unknown;
 };
 type Speaker = {
@@ -50,43 +42,78 @@ type Speaker = {
   profile?: Profile;
 };
 type AudioState = { status: string; url?: string };
-const room = { width: 5, length: 4, height: 2.7, presetId: "living_room" },
+const room = { width: 5, length: 4, height: 2.7, presetId: 'living_room' },
   positions = [
     { x: 1.2, y: 0.8, z: 0.6, rotation: 15 },
     { x: 3.8, y: 0.8, z: 0.6, rotation: -15 },
   ],
   listener = { x: 2.5, y: 3.2, z: 1.1 };
 const usd = (x: string | number) =>
-  `$${(typeof x === "number" ? x : Number(x.replace(/[^0-9.]/g, "")) || 0).toLocaleString("en-US")}`;
+  `$${(typeof x === 'number' ? x : Number(x.replace(/[^0-9.]/g, '')) || 0).toLocaleString('en-US')}`;
 const icon = (m: string) =>
-  m.includes("Frequency") ? (
+  m.includes('Frequency') ? (
     <Waves />
-  ) : m.includes("Sensitivity") || m.includes("SPL") ? (
+  ) : m.includes('Sensitivity') || m.includes('SPL') ? (
     <Volume2 />
-  ) : m.includes("impedance") || m.includes("Crossover") ? (
+  ) : m.includes('impedance') || m.includes('Crossover') ? (
     <CircuitBoard />
-  ) : m.includes("Dimensions") ? (
+  ) : m.includes('Dimensions') ? (
     <Ruler />
-  ) : m.includes("Weight") ? (
+  ) : m.includes('Weight') ? (
     <Weight />
-  ) : m.includes("Cabinet") ? (
+  ) : m.includes('Cabinet') ? (
     <Box />
-  ) : m === "System" ? (
+  ) : m === 'System' ? (
     <Radio />
   ) : (
     <SlidersHorizontal />
   );
 const SPEC_ORDER = [
-  "System", "Architecture", "Drivers", "Frequency response", "Sensitivity",
-  "Nominal impedance", "Recommended amplifier power", "Crossover frequency",
-  "Maximum SPL", "Amplification", "Inputs", "Calibration", "Directivity",
-  "Format", "Cabinet size", "Cabinet materials", "Cabinet finishes", "Finish family",
-  "Grille", "Base", "Edge profile", "Dimensions (H × W × D)", "Weight",
-  "Alignment", "Bass character", "Net volume", "Port tuning", "Port diameter",
-  "Port length", "Damping", "Voicing target", "Room size", "Listening distance",
-  "Simulation status", "Model type", "Measurement status", "Manufacturing status",
-  "Compatibility notes", "Measurement required for", "Simulated changes", "Warnings",
-  "Reference source", "Source assets",
+  'System',
+  'Architecture',
+  'Drivers',
+  'Frequency response',
+  'Sensitivity',
+  'Nominal impedance',
+  'Recommended amplifier power',
+  'Crossover frequency',
+  'Maximum SPL',
+  'Amplification',
+  'Inputs',
+  'Calibration',
+  'Wireless',
+  'Room correction',
+  'Directivity',
+  'Format',
+  'Cabinet size',
+  'Cabinet materials',
+  'Cabinet finishes',
+  'Finish family',
+  'Grille',
+  'Base',
+  'Edge profile',
+  'Dimensions (H × W × D)',
+  'Weight',
+  'Alignment',
+  'Bass character',
+  'Net volume',
+  'Port tuning',
+  'Port diameter',
+  'Port length',
+  'Damping',
+  'Voicing target',
+  'Room size',
+  'Listening distance',
+  'Simulation status',
+  'Model type',
+  'Measurement status',
+  'Manufacturing status',
+  'Compatibility notes',
+  'Measurement required for',
+  'Simulated changes',
+  'Warnings',
+  'Reference source',
+  'Source assets',
 ] as const;
 function Player({ source, label }: { source?: string; label: string }) {
   const ref = useRef<HTMLAudioElement>(null);
@@ -114,47 +141,42 @@ function Player({ source, label }: { source?: string; label: string }) {
     </div>
   );
 }
-export default function ComparisonPage({ onBack }: Props) {
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
-  useEffect(() => {
-    const abort = new AbortController();
-    void fetch(apiUrl("/api/speakers/catalog"), { signal: abort.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Catalog unavailable");
-        return response.json() as Promise<{ products: Product[] }>;
-      })
-      .then(({ products }) => setCatalogProducts(products));
-    return () => abort.abort();
-  }, []);
-  const [saved, setSaved] = useState<LocalBuild[]>(
-    () => readLocalBuilds()?.builds ?? [],
-  );
+export default function ComparisonPage({ products, onBack }: Props) {
+  const [saved, setSaved] = useState<LocalBuild[]>(() => readLocalBuilds()?.builds ?? []);
   useEffect(() => {
     const refresh = () => setSaved(readLocalBuilds()?.builds ?? []);
-    window.addEventListener("acoustom-builds-updated", refresh);
-    return () => window.removeEventListener("acoustom-builds-updated", refresh);
+    window.addEventListener('acoustom-builds-updated', refresh);
+    return () => window.removeEventListener('acoustom-builds-updated', refresh);
   }, []);
   const [scrolled, setScrolled] = useState(false);
   const matrixRef = useRef<HTMLElement>(null);
-  const catalog = useMemo<Speaker[]>(() => catalogProducts.map((p) => ({
-    id: `catalog:${p.name}`,
-    name: p.name,
-    type: p.type,
-    image: p.image,
-    price: Number(p.price.replace(/[^0-9.]/g, "")) || 0,
-    specs: p.specs,
-    product: p,
-  })), [catalogProducts]);
-  const custom = useMemo<Speaker[]>(() => saved.map((b) => ({
-    id: `custom:${b.id}`,
-    name: b.name,
-    type: "Custom design",
-    image: "/images/components/platform-compact.png",
-    price: 0,
-    configuration: b.configuration,
-    specs: b.specs ?? [],
-    profile: b.derived?.simulationProfile as Profile | undefined,
-  })), [saved]);
+  const catalog = useMemo<Speaker[]>(
+    () =>
+      products.map((p) => ({
+        id: `catalog:${p.name}`,
+        name: p.name,
+        type: p.type,
+        image: p.image,
+        price: Number(p.price.replace(/[^0-9.]/g, '')) || 0,
+        specs: p.specs,
+        product: p,
+      })),
+    [products]
+  );
+  const custom = useMemo<Speaker[]>(
+    () =>
+      saved.map((b) => ({
+        id: `custom:${b.id}`,
+        name: b.name,
+        type: 'Custom design',
+        image: '/images/components/platform-compact.png',
+        price: 0,
+        configuration: b.configuration,
+        specs: b.specs ?? [],
+        profile: b.derived?.simulationProfile as Profile | undefined,
+      })),
+    [saved]
+  );
   const choices = useMemo(() => [...catalog, ...custom], [catalog, custom]);
   const [slots, setSlots] = useState<(Speaker | null)[]>([
     catalog[0] ?? null,
@@ -166,22 +188,24 @@ export default function ComparisonPage({ onBack }: Props) {
   const [chooser, setChooser] = useState<number | null>(null);
   const [audio, setAudio] = useState<Record<string, AudioState>>({});
   const resolvedSlots = useMemo(
-    () => slots.map((slot) => slot ? (choices.find((choice) => choice.id === slot.id) ?? slot) : null),
-    [slots, choices],
+    () =>
+      slots.map((slot) =>
+        slot ? (choices.find((choice) => choice.id === slot.id) ?? slot) : null
+      ),
+    [slots, choices]
   );
   const selected = useMemo(
     () => resolvedSlots.filter((speaker): speaker is Speaker => !!speaker),
-    [resolvedSlots],
+    [resolvedSlots]
   );
-  const metrics = useMemo(
-    () => {
-      const available = new Set(selected.flatMap((speaker) => speaker.specs.map(([label]) => label)));
-      const ordered = SPEC_ORDER.filter((label) => available.has(label));
-      const additional = Array.from(available).filter((label) => !SPEC_ORDER.includes(label as typeof SPEC_ORDER[number]));
-      return [...ordered, ...additional];
-    },
-    [selected],
-  );
+  const metrics = useMemo(() => {
+    const available = new Set(selected.flatMap((speaker) => speaker.specs.map(([label]) => label)));
+    const ordered = SPEC_ORDER.filter((label) => available.has(label));
+    const additional = Array.from(available).filter(
+      (label) => !SPEC_ORDER.includes(label as (typeof SPEC_ORDER)[number])
+    );
+    return [...ordered, ...additional];
+  }, [selected]);
   const setSlot = (i: number, s: Speaker | null) => {
     setSlots((all) => all.map((x, n) => (n === i ? s : x)));
     setChooser(null);
@@ -189,33 +213,32 @@ export default function ComparisonPage({ onBack }: Props) {
   const available = (i: number) =>
     choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.id === s.id));
   useEffect(() => {
-    if (!selected.length && catalog[0])
-      setSlots([catalog[0], null, null, null, null]);
+    if (!selected.length && catalog[0]) setSlots([catalog[0], null, null, null, null]);
   }, [catalog, selected.length]);
   useEffect(() => {
     const onScroll = () => {
       const m = matrixRef.current;
       if (m) setScrolled(m.getBoundingClientRect().top < 120);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
   useEffect(() => {
     let dead = false;
     const abort = new AbortController(),
       urls: string[] = [];
     const run = async () => {
-      const source = await fetch("/wav/sample-15s.wav");
-      const track = new File([await source.blob()], "reference.wav", {
-        type: "audio/wav",
+      const source = await fetch('/wav/sample-15s.wav');
+      const track = new File([await source.blob()], 'reference.wav', {
+        type: 'audio/wav',
       });
       await Promise.all(
         selected.map(async (s) => {
           if (!s.product && !s.profile) return;
           setAudio((a) => ({
             ...a,
-            [s.id]: { status: "Generating simulation…" },
+            [s.id]: { status: 'Generating simulation…' },
           }));
           try {
             const request = s.product
@@ -226,33 +249,32 @@ export default function ComparisonPage({ onBack }: Props) {
                   listener,
                 }
               : {
-                  speakerId: "custom-reference",
+                  speakerId: 'custom-reference',
                   speakerProfile: s.profile,
                   room,
                   speakers: positions,
                   listener,
                 };
-            const response = await fetch(apiUrl("/api/simulate"), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            const response = await fetch(apiUrl('/api/simulate'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(request),
               signal: abort.signal,
             });
             if (!response.ok) throw Error();
-            setAudio((a) => ({ ...a, [s.id]: { status: "Rendering audio…" } }));
+            setAudio((a) => ({ ...a, [s.id]: { status: 'Rendering audio…' } }));
             const wav = await renderSimulatedWav(
               track,
-              (await response.json()) as SimulationResult,
+              (await response.json()) as SimulationResult
             );
             const url = URL.createObjectURL(wav);
             urls.push(url);
-            if (!dead)
-              setAudio((a) => ({ ...a, [s.id]: { status: "Ready", url } }));
+            if (!dead) setAudio((a) => ({ ...a, [s.id]: { status: 'Ready', url } }));
           } catch {
             if (!dead && !abort.signal.aborted)
-              setAudio((a) => ({ ...a, [s.id]: { status: "Unavailable" } }));
+              setAudio((a) => ({ ...a, [s.id]: { status: 'Unavailable' } }));
           }
-        }),
+        })
       );
     };
     void run().catch(() => undefined);
@@ -262,11 +284,10 @@ export default function ComparisonPage({ onBack }: Props) {
       urls.forEach(URL.revokeObjectURL);
     };
   }, [selected]);
-  const cells = (f: (s: Speaker | null, i: number) => React.ReactNode) =>
-    resolvedSlots.map(f);
+  const cells = (f: (s: Speaker | null, i: number) => React.ReactNode) => resolvedSlots.map(f);
   return (
     <main className="comparison-page comparison-redesign">
-      <div className={`comparison-sticky-bar${scrolled ? " is-visible" : ""}`}>
+      <div className={`comparison-sticky-bar${scrolled ? ' is-visible' : ''}`}>
         <div className="comparison-sticky-bar-inner">
           <div className="sticky-head">Speakers</div>
           {cells((s, i) => (
@@ -291,8 +312,8 @@ export default function ComparisonPage({ onBack }: Props) {
             Hear the <em>difference.</em>
           </h1>
           <p>
-            Choose up to five speakers. Every selection is tested against one
-            room and one reference track.
+            Choose up to five speakers. Every selection is tested against one room and one reference
+            track.
           </p>
         </div>
         <div className="comparison-room-card">
@@ -314,10 +335,7 @@ export default function ComparisonPage({ onBack }: Props) {
             <div className="matrix-cell matrix-speaker" key={i}>
               {s ? (
                 <article>
-                  <button
-                    className="matrix-remove"
-                    onClick={() => setSlot(i, null)}
-                  >
+                  <button className="matrix-remove" onClick={() => setSlot(i, null)}>
                     <X size={12} />
                   </button>
                   <img src={s.image} alt={s.name} />
@@ -354,8 +372,8 @@ export default function ComparisonPage({ onBack }: Props) {
                   <div className="matrix-status">
                     {audio[s.id]?.status ??
                       (s.profile || s.product
-                        ? "Generating simulation…"
-                        : "Deriving build profile…")}
+                        ? 'Generating simulation…'
+                        : 'Deriving build profile…')}
                   </div>
                 )
               ) : null}
@@ -379,21 +397,15 @@ export default function ComparisonPage({ onBack }: Props) {
             </div>
             {cells((s, i) => (
               <div className="matrix-value" key={i}>
-                {s ? (s.specs.find(([label]) => label === m)?.[1] ?? "—") : ""}
+                {s ? (s.specs.find(([label]) => label === m)?.[1] ?? '—') : ''}
               </div>
             ))}
           </div>
         ))}
       </section>
       {chooser !== null && (
-        <div
-          className="speaker-modal-backdrop"
-          onClick={() => setChooser(null)}
-        >
-          <section
-            className="speaker-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="speaker-modal-backdrop" onClick={() => setChooser(null)}>
+          <section className="speaker-modal" onClick={(e) => e.stopPropagation()}>
             <header>
               <div>
                 <p className="eyebrow">Choose a speaker</p>
