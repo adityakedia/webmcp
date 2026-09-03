@@ -248,6 +248,7 @@ function StudioRoom({ room, speakers, listener }: Props) {
   const [draftListener, setDraftListener] = useState(listener);
   const speakersRef = useRef(speakers);
   const listenerRef = useRef(listener);
+  const lastPointerX = useRef<number | null>(null);
 
   useEffect(() => {
     if (dragging) return;
@@ -264,11 +265,28 @@ function StudioRoom({ room, speakers, listener }: Props) {
   });
   const updateDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging) return;
+    if (dragging !== 'listener' && event.nativeEvent.shiftKey) {
+      const previousX = lastPointerX.current ?? event.nativeEvent.clientX;
+      const delta = event.nativeEvent.clientX - previousX;
+      const current = speakersRef.current[dragging];
+      const next = {
+        ...speakersRef.current,
+        [dragging]: {
+          ...current,
+          rotation: ((current.rotation + delta * 0.7 + 180) % 360) - 180,
+        },
+      };
+      speakersRef.current = next;
+      setDraftSpeakers(next);
+      lastPointerX.current = event.nativeEvent.clientX;
+      return;
+    }
     const position = pointToRoomPosition(event.point);
     if (dragging === 'listener') {
       const next = { ...listenerRef.current, ...position };
       listenerRef.current = next;
       setDraftListener(next);
+      lastPointerX.current = event.nativeEvent.clientX;
       return;
     }
     const next = {
@@ -277,6 +295,7 @@ function StudioRoom({ room, speakers, listener }: Props) {
     };
     speakersRef.current = next;
     setDraftSpeakers(next);
+    lastPointerX.current = event.nativeEvent.clientX;
   };
   const finishDrag = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging) return;
@@ -285,9 +304,11 @@ function StudioRoom({ room, speakers, listener }: Props) {
     if (dragging === 'listener') store.setListenerPosition(listenerRef.current);
     else store.setSpeakerPosition(dragging, speakersRef.current[dragging]);
     setDragging(null);
+    lastPointerX.current = null;
   };
   const startDrag = (target: Exclude<DragTarget, null>, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
+    lastPointerX.current = event.nativeEvent.clientX;
     setDragging(target);
   };
 
@@ -417,8 +438,8 @@ export default function RoomScene(props: Props) {
         <StudioRoom {...props} />
       </Canvas>
       <div className="room-scene-help">
-        Drag a speaker or listener to reposition · Release to run a fresh simulation · Right-drag to
-        explore · Scroll to zoom
+        Drag a speaker or listener to reposition · Shift-drag a speaker to rotate · Release to run
+        a fresh simulation · Right-drag to explore · Scroll to zoom
       </div>
     </div>
   );

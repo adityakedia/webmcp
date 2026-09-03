@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { RoomDimensions, SimulationResult } from '@acoustom/types';
 
 type Props = { result: SimulationResult | null; room: RoomDimensions; speakerName: string | null };
@@ -72,12 +72,46 @@ function ModeChart({ room }: { room: RoomDimensions }) {
   );
 }
 
+function FrequencyChart({ points }: { points: SimulationResult['frequencyResponse'] }) {
+  const max = Math.max(6, ...points.map((point) => Math.abs(point.gainDb)));
+  const plotted = points.map((point) => {
+    const x = ((Math.log10(point.frequencyHz) - Math.log10(20)) / 3) * 100;
+    const y = 50 - (point.gainDb / max) * 40;
+    return `${x},${Math.max(8, Math.min(92, y))}`;
+  }).join(' ');
+  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Modelled frequency response" preserveAspectRatio="none"><path className="chart-grid-line" d="M0 20H100M0 50H100M0 80H100" /><polyline className="chart-line" points={plotted} /><text x="2" y="98">20 Hz</text><text x="98" y="98" textAnchor="end">20 kHz</text></svg><span className="chart-axis-label chart-axis-left">+{max.toFixed(0)} dB</span><span className="chart-axis-label chart-axis-right">−{max.toFixed(0)} dB</span></div>;
+}
+
+function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) {
+  const [samples, setSamples] = useState<number[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const context = new AudioContext();
+    Promise.all([urls.left, urls.right].map((url) => fetch(url).then((response) => response.arrayBuffer()).then((data) => context.decodeAudioData(data))))
+      .then((buffers) => {
+        if (cancelled) return;
+        const length = Math.min(...buffers.map((buffer) => buffer.length));
+        const values = Array.from({ length: 220 }, (_, index) => {
+          const start = Math.floor((index / 220) * length);
+          const end = Math.max(start + 1, Math.floor(((index + 1) / 220) * length));
+          return Math.max(...buffers.flatMap((buffer) => Array.from(buffer.getChannelData(0).slice(start, end)).map(Math.abs)));
+        });
+        const peak = Math.max(...values, 1e-12);
+        setSamples(values.map((value) => value / peak));
+      }).catch(() => setSamples([])).finally(() => void context.close());
+    return () => { cancelled = true; void context.close(); };
+  }, [urls.left, urls.right]);
+  const points = samples.map((value, index) => `${(index / Math.max(1, samples.length - 1)) * 100},${92 - value * 78}`).join(' ');
+  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Simulated impulse response" preserveAspectRatio="none"><path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" />{samples.length > 0 && <polyline className="chart-line" points={points} />}<text x="2" y="98">0 s</text><text x="98" y="98" textAnchor="end">tail</text></svg></div>;
+}
+
 export default function SimulationInsights({ result, room, speakerName }: Props) {
   const [openResult, setOpenResult] = useState<SimulationResult | null>(null);
   const open = openResult === result;
   const rt60 = result?.metrics.rt60 ?? null;
   const modes = useMemo(() => modeFrequencies(room), [room]);
-  if (rt60 === null) return null;
+  if (!result || rt60 === null) return null;
+  const analysisResult = result;
   const character = roomLabel(rt60);
   const primaryMode = Math.min(...modes.map((mode) => mode.value));
   return (
@@ -157,7 +191,7 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
                 ×
               </button>
             </div>
-            <div className="modal-metric-row">
+          <div className="modal-metric-row">
               <div>
                 <span>RT60</span>
                 <strong>{rt60.toFixed(2)} s</strong>
@@ -170,6 +204,9 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
                 <span>Primary mode</span>
                 <strong>{primaryMode.toFixed(0)} Hz</strong>
               </div>
+              <div><span>Early decay</span><strong>{analysisResult.metrics.earlyDecayTime?.toFixed(2) ?? '—'} s</strong></div>
+              <div><span>Clarity / C80</span><strong>{analysisResult.metrics.clarity?.toFixed(1) ?? '—'} dB</strong></div>
+              <div><span>Definition / D50</span><strong>{analysisResult.metrics.definition != null ? `${(analysisResult.metrics.definition * 100).toFixed(0)}%` : '—'}</strong></div>
             </div>
             <div className="modal-chart-block">
               <div className="insight-title">
@@ -187,6 +224,10 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
               </div>
               <ModeChart room={room} />
             </div>
+            <div className="modal-chart-block"><div className="insight-title"><span>Frequency response</span><small>modelled in-room gain</small></div><FrequencyChart points={analysisResult.frequencyResponse} /></div>
+            <div className="modal-chart-block"><div className="insight-title"><span>Impulse response</span><small>left + right channels</small></div><ImpulseChart urls={analysisResult.impulseResponses} /></div>
+            <div className="modal-chart-block"><div className="insight-title"><span>Frequency response</span><small>modelled in-room gain</small></div><FrequencyChart points={result.frequencyResponse} /></div>
+            <div className="modal-chart-block"><div className="insight-title"><span>Impulse response</span><small>left + right channels</small></div><ImpulseChart urls={analysisResult.impulseResponses} /></div>
             <p className="insight-disclaimer">
               Use these values to compare placements and room presets consistently. Final acoustic
               performance should be verified with measurements.

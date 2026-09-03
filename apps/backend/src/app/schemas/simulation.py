@@ -102,6 +102,9 @@ class ImpulseResponses(BaseModel):
 
 class SimulationMetrics(BaseModel):
     rt60: float
+    earlyDecayTime: float
+    clarity: float
+    definition: float
 
 
 class FrequencyResponsePoint(BaseModel):

@@ -164,6 +164,7 @@ class SimulationService:
             },
             "metrics": {
                 "rt60": float(np.mean(pra.experimental.measure_rt60(rir_left, fs=fs))),
+                **self._impulse_metrics(rir_left, fs),
             },
             "frequencyResponse": self._frequency_response(rir_left, fs),
             "speakerPerformance": performance,
@@ -181,6 +182,27 @@ class SimulationService:
             {"frequencyHz": round(float(frequency), 2), "gainDb": round(float(np.interp(frequency, frequencies, gains)), 2)}
             for frequency in points
         ]
+
+    def _impulse_metrics(self, rir: np.ndarray, sample_rate: int) -> dict[str, float]:
+        """Calculate common early-energy metrics from the simulated impulse response."""
+        energy = np.square(np.asarray(rir, dtype=np.float64))
+        peak = int(np.argmax(energy))
+        shifted = energy[peak:]
+        total = max(float(np.sum(shifted)), 1e-15)
+        cumulative = np.cumsum(shifted[::-1])[::-1]
+        decay_db = 10 * np.log10(np.maximum(cumulative / total, 1e-15))
+
+        def energy_until(seconds: float) -> float:
+            return float(np.sum(shifted[: max(1, int(seconds * sample_rate))]))
+
+        early = energy_until(0.08)
+        late = max(total - early, 1e-15)
+        c80 = 10 * np.log10(max(early, 1e-15) / late)
+        d50 = energy_until(0.05) / total
+        below_10 = np.flatnonzero(decay_db <= -10)
+        below_20 = np.flatnonzero(decay_db <= -20)
+        early_decay = float((below_20[0] - below_10[0]) / sample_rate) if len(below_10) and len(below_20) else 0.0
+        return {"earlyDecayTime": round(early_decay, 4), "clarity": round(float(c80), 2), "definition": round(float(d50), 3)}
 
     def _apply_speaker_bandwidth(
         self, rir: np.ndarray, fs: int, frequency_range: tuple[float, float]
