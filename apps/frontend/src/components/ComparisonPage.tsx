@@ -415,7 +415,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
                     </div>
                   )}
                   {audio[s.id]?.result && (
-                    <SpeakerSimulationData result={audio[s.id].result} speakerName={s.name} />
+                    <SpeakerSimulationData result={audio[s.id]!.result!} speakerName={s.name} />
                   )}
                 </>
               ) : null}
