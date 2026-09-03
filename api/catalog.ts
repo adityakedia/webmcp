@@ -22,17 +22,23 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return;
   }
 
-  const dataApiUrl = process.env.NEON_DATA_API_URL;
-  if (!dataApiUrl) {
-    response.status(500).json({ error: 'NEON_DATA_API_URL is not configured' });
+  const connectionString = process.env.DATABASE_URL ?? process.env.NEON_DATA_API_URL;
+  if (!connectionString) {
+    response.status(500).json({ error: 'DATABASE_URL is not configured' });
     return;
   }
 
-  const url = `${dataApiUrl.replace(/\/$/, '')}/speakers?select=*&order=id.asc`;
-  const upstream = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!upstream.ok) {
-    response.status(502).json({ error: `Catalog database returned ${upstream.status}` });
-    return;
+  try {
+    const sql = neon(connectionString);
+    const products = await sql`
+      SELECT id, name, type, price, image, tone, category, description, specs
+      FROM speakers
+      ORDER BY id
+    `;
+    response.status(200).json({ products: products as CatalogRow[] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown database error';
+    response.status(500).json({ error: message });
   }
-  response.status(200).json({ products: (await upstream.json()) as CatalogRow[] });
 }
+import { neon } from '@neondatabase/serverless';

@@ -12,7 +12,10 @@ export type CatalogProduct = {
 
 export async function fetchCatalog(signal?: AbortSignal): Promise<CatalogProduct[]> {
   const response = await fetch('/api/catalog', { signal, cache: 'no-store' });
-  if (!response.ok) throw new Error('Catalog unavailable');
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Catalog unavailable (${response.status}): ${detail || response.statusText}`);
+  }
   const payload = (await response.json()) as { products?: CatalogProduct[] };
   if (!Array.isArray(payload.products)) throw new Error('Catalog response is invalid');
   return payload.products;
