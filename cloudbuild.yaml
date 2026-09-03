@@ -9,6 +9,7 @@ steps:
       - --builder
       - gcr.io/buildpacks/builder:latest
       - --network
+      - cloudbuild
       - --publish
 
 images:
