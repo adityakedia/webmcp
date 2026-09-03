@@ -5,11 +5,11 @@ description: Recommend and compare Acoustom catalog speakers for a listener's ro
 
 # Acoustom speaker recommendation
 
-Use the Acoustom MCP tools as the source of truth for catalog facts and suitability. Start with `get_acoustom_overview` when the site or tool set is unfamiliar; otherwise use the smallest useful sequence.
+Use the Acoustom MCP tools as the source of truth for catalog facts and suitability. A broad buying request always begins with `acoustom-guided-discovery`; do not treat `recommend_speakers` as a shortcut around the discovery conversation. Start with `get_acoustom_overview` when the site or tool set is unfamiliar; otherwise use the smallest useful sequence.
 
 ## Gather the decision inputs
 
-Establish room size, listening preference, preferred format, and budget in USD when they materially affect the recommendation. For missing room or music context, proactively offer the relevant approved connected source or upload/default fallback before asking the user to type details. Ask only one concise question for information that cannot be obtained that way and would change the outcome. Do not block on optional enrichment when a provisional catalog ranking can still be made with explicit assumptions.
+Establish room size, listening preference, preferred format, and budget in USD when they materially affect the recommendation. For missing room or music context, proactively offer the relevant approved connected source or upload/default fallback before asking the user to type details. Ask only one concise question for information that cannot be obtained that way and would change the outcome. When a material input is missing, ask for it or ask explicit permission to proceed with named assumptions; do not issue a provisional ranking first.
 
 If listening taste would materially change a close recommendation and it is unknown, offer the connected music-preference prompt from guided discovery. If the user approves and the agent has a relevant connection, record only the derived preference summary with `set_music_preferences` so the reasoning and visible page share the same context. Do not retrieve or reproduce protected streaming audio.
 

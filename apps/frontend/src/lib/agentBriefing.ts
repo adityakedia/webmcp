@@ -213,8 +213,8 @@ export const acoustomOverview = {
   },
   howToStart: [
     'Call get_user_context to see what this session already holds: room, selected speaker, comparison set, saved builds, music preferences, bag.',
-    'Load the skill that matches the request with get_acoustom_skill; acoustom-guided-discovery is the entry point when the request is broad.',
-    'Ask only for the requirements that would change your answer, then work through the matching workflow from get_acoustom_workflow.',
+    'For every broad buying request, load acoustom-guided-discovery before recommending or inspecting products. It is the required entry point, not an optional alternative.',
+    'In the first response, state what is known, then ask only for the requirements that would change the answer or ask explicit permission to proceed with named assumptions. Do not rank before one of those happens.',
     'Navigate the visible page to each step as you go, and tell the user what they can review or change there.',
     'For a completed recommendation, comparison, custom-build, or room-simulation workflow, use that skill’s required response structure; use natural conversation for ordinary follow-ups that do not advance a workflow.',
   ],

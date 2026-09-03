@@ -888,12 +888,13 @@ export function useWebMcp(options: Options): void {
         inputSchema: noArgs,
         annotations: readOnly,
         execute: () => ({
-          version: 4,
+          version: 5,
           agentProtocol: {
             firstTurn: [
               'Call get_user_context to see what the user’s view already holds, and get_acoustom_overview when the site or tool set is unfamiliar.',
-              'Identify the user’s room (size or dimensions), listening preference, preferred format, and budget in USD when they would change the answer.',
-              'For missing room or music context, proactively offer an approved connected source or upload/default fallback before asking the user to type it. Ask only one concise question for information that cannot be obtained that way and would change the recommendation; never fabricate it.',
+              'For every broad buying request, load acoustom-guided-discovery before recommending or inspecting products. The first response must establish context, not announce a winner.',
+              'State the requirement already known, identify only the missing inputs that materially change the answer, and either ask for them or ask explicit permission to proceed with named assumptions.',
+              'For missing room or music context, proactively offer an approved connected source or upload/default fallback before asking the user to type it. Ask only one concise question for information that cannot be obtained that way and would change the recommendation; never fabricate it or silently apply a default.',
               'Use tool results as the source of truth for catalog facts, pricing, specifications, and simulation output.',
               'Keep the visible page on whatever you are working on; call navigate_acoustom with the relevant destination and context (productNames, buildId, speakerName, trackId) so the user sees the same view.',
               'Label every claim as catalog fact, suitability reason, or simulated evidence. Give one primary recommendation, one alternative with its trade-off, and name the evidence you could not obtain.',
@@ -966,7 +967,7 @@ export function useWebMcp(options: Options): void {
                 },
               ],
               constraints: [
-                'If room size, listening preference, or another material requirement is unknown, ask the user before ranking.',
+                'If room size, listening preference, or another material requirement is unknown, ask the user for it or get explicit permission to use named assumptions before ranking.',
                 'Do not treat the ranking score as a measured acoustic result.',
                 'Budget is USD per pair; use budgetUsd, not budgetEur.',
               ],
