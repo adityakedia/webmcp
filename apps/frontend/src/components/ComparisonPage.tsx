@@ -20,6 +20,7 @@ import type { CustomSpeakerConfiguration, SimulationResult } from '@acoustom/typ
 import type { Product } from '../App';
 import { apiUrl } from '../lib/api';
 import { readLocalBuilds, type LocalBuild } from '../lib/localBuilds';
+import { deriveBuildData } from '../lib/customBuildDerivation';
 import { renderSimulatedWav } from '../lib/simulatedAudio';
 import { useAgentViewStore } from '../store/agentView';
 type Props = {
@@ -167,16 +168,22 @@ export default function ComparisonPage({ products, onBack }: Props) {
   );
   const custom = useMemo<Speaker[]>(
     () =>
-      saved.map((b) => ({
-        id: `custom:${b.id}`,
-        name: b.name,
-        type: 'Custom design',
-        image: '/images/components/platform-compact.png',
-        price: 0,
-        configuration: b.configuration,
-        specs: b.specs ?? [],
-        profile: b.derived?.simulationProfile as Profile | undefined,
-      })),
+      saved.map((b) => {
+        // Specs and simulation data are fully determined by the stored
+        // configuration, so derive them on the spot for builds saved before
+        // validation completed or by older versions.
+        const fallback = b.specs?.length && b.derived ? null : deriveBuildData(b.configuration);
+        return {
+          id: `custom:${b.id}`,
+          name: b.name,
+          type: 'Custom design',
+          image: '/images/components/platform-compact.png',
+          price: 0,
+          configuration: b.configuration,
+          specs: b.specs?.length ? b.specs : (fallback?.specs ?? []),
+          profile: b.derived?.simulationProfile ?? fallback?.derived.simulationProfile,
+        };
+      }),
     [saved]
   );
   const choices = useMemo(() => [...catalog, ...custom], [catalog, custom]);
@@ -215,6 +222,14 @@ export default function ComparisonPage({ products, onBack }: Props) {
   const selected = useMemo(
     () => resolvedSlots.filter((speaker): speaker is Speaker => !!speaker),
     [resolvedSlots]
+  );
+  const selectedIds = useMemo(
+    () => new Set(selected.map((speaker) => speaker.id)),
+    [selected]
+  );
+  const availableChoices = useMemo(
+    () => choices.filter((choice) => !selectedIds.has(choice.id)),
+    [choices, selectedIds]
   );
   const metrics = useMemo(() => {
     const available = new Set(selected.flatMap((speaker) => speaker.specs.map(([label]) => label)));
@@ -432,18 +447,22 @@ export default function ComparisonPage({ products, onBack }: Props) {
               </button>
             </header>
             <div className="speaker-modal-list">
-              {choices.map((s) => (
-                <button key={s.id} onClick={() => setSlot(chooser, s)}>
-                  <img src={s.image} alt="" />
-                  <span>
-                    <strong>{s.name}</strong>
-                    <small>
-                      {s.type} · {usd(s.price)}
-                    </small>
-                  </span>
-                  <Plus size={18} />
-                </button>
-              ))}
+              {availableChoices.length ? (
+                availableChoices.map((s) => (
+                  <button key={s.id} onClick={() => setSlot(chooser, s)}>
+                    <img src={s.image} alt="" />
+                    <span>
+                      <strong>{s.name}</strong>
+                      <small>
+                        {s.type} · {usd(s.price)}
+                      </small>
+                    </span>
+                    <Plus size={18} />
+                  </button>
+                ))
+              ) : (
+                <p className="speaker-modal-empty">Every speaker is already in this comparison.</p>
+              )}
             </div>
           </section>
         </div>
