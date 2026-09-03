@@ -16,9 +16,33 @@ Use the room simulator to estimate the interaction of a supported speaker profil
 
 Land the user in the lab with `navigate_acoustom` (`destination: listening_lab`, optionally `speakerName`) before discussing a result, so the room you describe is the room on screen.
 
+When room dimensions, layout, or surface assumptions are missing and the result would be used for a decision, offer the consent-based room-context prompt from guided discovery. If the user approves and a relevant connected source is available, first identify the candidate room files for the user to approve; otherwise use an editable default. Never fetch private files without that approval.
+
 Use default layout only when the user has not provided placement. If a custom layout is supplied, keep every speaker and listener coordinate within the stated room. Explain that source rotation/directivity is a simulation input, not a verified physical property unless supplied by the chosen profile.
 
 ## Interpret and report
+
+Use this response structure after the listening lab is visible and a result is available:
+
+```md
+## In-room simulation: [speaker or build]
+
+### Room used
+- Dimensions: …
+- Acoustic preset / surface assumptions: …
+- Placement: …
+
+### Result
+- RT60: …
+- Broad response trend: …
+- Profile provenance: …
+
+### What to try
+- [one practical placement, treatment, or speaker comparison action]
+
+### Next step
+[a visible Listening Lab action or one short question]
+```
 
 State the room dimensions, preset or surface assumptions, placement assumptions, selected speaker, and profile provenance. Report RT60 as an estimated decay time and use the frequency-response points to identify broad, relevant trends rather than over-interpreting individual narrow points.
 

@@ -884,15 +884,16 @@ export function useWebMcp(options: Options): void {
         inputSchema: noArgs,
         annotations: readOnly,
         execute: () => ({
-          version: 3,
+          version: 4,
           agentProtocol: {
             firstTurn: [
               'Call get_user_context to see what the user’s view already holds, and get_acoustom_overview when the site or tool set is unfamiliar.',
               'Identify the user’s room (size or dimensions), listening preference, preferred format, and budget in USD when they would change the answer.',
-              'Ask only for missing inputs that would change the recommendation; never fabricate them.',
+              'For missing room or music context, proactively offer an approved connected source or upload/default fallback before asking the user to type it. Ask only one concise question for information that cannot be obtained that way and would change the recommendation; never fabricate it.',
               'Use tool results as the source of truth for catalog facts, pricing, specifications, and simulation output.',
               'Keep the visible page on whatever you are working on; call navigate_acoustom with the relevant destination and context (productNames, buildId, speakerName, trackId) so the user sees the same view.',
               'Label every claim as catalog fact, suitability reason, or simulated evidence. Give one primary recommendation, one alternative with its trade-off, and name the evidence you could not obtain.',
+              'When the user asks for the best speaker, compare two or three credible candidates and explain why the primary choice wins. If a curated custom build could address a stated limitation, offer it as an optional validated comparison and ask permission before building.',
             ],
             evidenceLabels: {
               catalogFact: 'Directly returned by list_products or get_product.',
@@ -904,6 +905,20 @@ export function useWebMcp(options: Options): void {
               'A recommendation is complete when the user has a primary choice, a trade-off or alternative, supporting catalog facts, and any important missing evidence or assumptions stated.',
             sameViewRule:
               'Whenever the user and the agent both need to be looking at the same thing — a comparison set, a listening-lab simulation, a custom build, a reference track — call navigate_acoustom (or the dedicated set_* tool) before describing it. After navigation, invite the user to review or change the visible controls; navigation is not consent.',
+            responseMode: {
+              rule:
+                'Use the specialised workflow response structure after completing a recommendation, comparison, custom-build, or room-simulation step. Use natural conversation for ordinary follow-ups that do not advance one of those workflows.',
+              requiredClosing:
+                'End every workflow response with one concrete next action or one short question, and name the visible page or control the user can review when relevant.',
+            },
+            contextEnrichment: {
+              rule:
+                'Proactively offer contextual data only when it would materially improve the active workflow. Never retrieve connected-app data without explicit approval; offer a no-data fallback and summarise only relevant derived signals.',
+              room:
+                'Before a decision-grade room simulation with missing room inputs, offer approved room photos or a floor plan from a relevant connected source, upload, or an editable default-room fallback. Identify candidate files for approval before using them.',
+              music:
+                'When listening taste would materially change a recommendation or audition, offer a high-level music-preference summary from a relevant connected service. Use it to choose a representative built-in track; never copy, upload, or simulate protected streaming audio.',
+            },
           },
           workflows: [
             {
@@ -929,9 +944,21 @@ export function useWebMcp(options: Options): void {
                     'Use complete details and specifications for the top candidate and any serious alternative.',
                 },
                 {
+                  tool: 'compare_speakers',
+                  optional: true,
+                  useOutput:
+                    'When the user asks for the best option, compare two or three credible candidates and use the requirements and returned specifications to explain why the primary choice wins.',
+                },
+                {
+                  tool: 'set_comparison_selection OR navigate_acoustom(productNames)',
+                  optional: true,
+                  useOutput:
+                    'Put the candidates being compared into the visible comparison matrix before presenting the comparison.',
+                },
+                {
                   tool: 'navigate_acoustom',
                   useOutput:
-                    'Show the top candidate on its product page (destination: product_detail, productName).',
+                    'Show the top candidate on its product page (destination: product_detail, productName), or keep the comparison matrix visible when comparison is the active step.',
                 },
               ],
               constraints: [

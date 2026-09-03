@@ -7,6 +7,21 @@ description: Entry-point skill for helping a user choose, compare, or design Aco
 
 Acoustom is a loudspeaker site with a live catalog, a five-slot comparison matrix, a listening lab that simulates speakers in the user's room, and a custom speaker builder. The agent works inside the page over WebMCP: every tool acts on the same browser session the user is looking at.
 
+## Response mode
+
+Use the structured response required by the specialised skill whenever you complete a recommendation, comparison, custom-build, or room-simulation step. Keep ordinary follow-up questions and explanations conversational unless they start or materially advance one of those workflows.
+
+For a broad onboarding request, use:
+
+```md
+## Let’s find the right setup
+
+**What I understand:** [the brief and any assumptions]
+**Recommended path:** [catalog / comparison / room simulation / custom build]
+**Optional context:** [only a relevant offer, if it would change the outcome]
+**Next step:** [one action the user can take, or one short question]
+```
+
 Call `get_acoustom_overview` first when the site is unfamiliar. It returns what the platform does, what it deliberately does not do, the page map, and which tools belong to each capability.
 
 ## Establish the brief before recommending
@@ -19,17 +34,37 @@ Collect only what changes the outcome:
 - budget in USD; and
 - whether the user wants a catalog product, a custom build, or both compared.
 
-Never invent these. Ask for the ones that would change the answer, and say which assumptions you are carrying when the user cannot supply a value.
+Never invent these. When one is missing, proactively offer the relevant connected context source (with approval) before asking the user to type it. If no source is available or approved, ask one concise question and explain why it changes the ranking; do not make the user answer a long questionnaire.
 
 ## Bring outside context in
 
-The platform has no Spotify, photo-analysis, or floor-plan integration. Anything of that kind comes from the agent's own connection to the user. Offer it explicitly, then land it in the page so the user sees the same thing:
+The platform has no Spotify, photo-analysis, or floor-plan integration. Anything of that kind comes from an app connection available to the agent. Offer it only when it would materially improve the current workflow, obtain explicit approval before retrieving anything, and offer a no-data fallback. Then land the approved context in the page so the user sees the same thing:
 
 - room photos or floor plans you can already see → `attach_room_reference_images` to show them in the listening lab, then `apply_agent_room_estimate` for editable dimensions, preset, and layout;
 - room images the user uploaded in the lab → `get_room_reference_images`;
 - playlists or listening habits → `set_music_preferences`, then `set_reference_track` to audition something representative.
 
-State that image-derived dimensions are estimates, not measurements, and that the user can correct every applied field.
+For missing room context, ask:
+
+```md
+### Make the room simulation more specific (optional)
+
+I can use room photos or a floor plan from an app you have connected, or you can upload them here. I would use them only to estimate editable room dimensions, layout, and surface assumptions.
+
+Would you like me to look for an approved file, upload one here, or continue with a default room?
+```
+
+For music context, ask:
+
+```md
+### Tune this to your listening habits (optional)
+
+If you have a music service connected, I can use high-level preference signals such as recurring genres and artists to choose a representative built-in reference track. I will not copy, upload, or simulate protected streaming audio.
+
+Would you like me to use that preference summary, or continue genre-neutral?
+```
+
+State that image-derived dimensions are estimates, not measurements, and that the user can correct every applied field. Summarise only the relevant derived signals from a connected source; do not expose private history or unrelated files.
 
 ## Run the work where the user can see it
 
@@ -39,7 +74,7 @@ Announce what is now on screen and what the user can change there. Navigation is
 
 ## Integrated route
 
-A full engagement usually runs: brief → `recommend_speakers` → inspect finalists with `get_product` → room from images or dimensions → `set_comparison_selection` and compare → `simulate_speaker_in_room` for the shortlist → optionally design an alternative with the custom builder → compare the custom build against the catalog in the same matrix and the same room → summarise against the original brief.
+A full engagement usually runs: brief → proactively enrich missing room/music context when useful → `recommend_speakers` → inspect finalists with `get_product` → `set_comparison_selection` and compare → `simulate_speaker_in_room` for the shortlist → offer a curated custom alternative when it could improve the stated fit → validate/build it → compare the custom build against the catalog in the same matrix and the same room → explain whether the custom build has a supported advantage or only a preference/design advantage.
 
 Each stage is also valid on its own. Do not force the user through stages that do not serve their question.
 

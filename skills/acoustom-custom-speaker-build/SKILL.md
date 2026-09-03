@@ -17,6 +17,8 @@ Treat the custom builder as a curated product configuration system, not free-for
 6. Save with `save_local_build`, which validates and stores the derived specifications so the build can be simulated and compared. Sign-in is not required; `save_custom_configuration` is for durable account-backed designs.
 7. For a saved design, load its current revision before editing and save using the returned revision. Revalidate edited configurations before simulation.
 
+When room or listening context would materially affect the selected platform or voicing target, offer the relevant consent-based prompt from guided discovery before validation. Do not request outside context merely because it is available.
+
 Open the build in the visible builder with `navigate_acoustom` (`destination: custom_design`, `buildId`) so the user can see and adjust the configuration you are describing. Then simulate it in their room with `simulate_custom_speaker_in_room`, and compare it against catalog candidates with `set_comparison_selection` when the user is weighing a custom build against buying off the shelf.
 
 Refine iteratively: change one variable the user objected to, revalidate, re-simulate in the same room, and report what actually moved.
@@ -31,6 +33,30 @@ Make an explicit distinction between a validated configuration and an acoustical
 - `compatibilityNotes` and `measurementRequiredFor`;
 - `derived.warnings`; and
 - `manufacturingStatus`.
+
+Use this response structure after validation, and again after a meaningful refinement:
+
+```md
+## Your custom build
+
+**Configuration:** [platform, format, enclosure]
+
+### What was selected
+- Drivers: …
+- Enclosure / cabinet: …
+- Damping, baffle, grille, and crossover profile: …
+
+### Predicted speaker profile
+- Sensitivity / impedance: …
+- Frequency range / crossover: …
+- Simulation status: …
+
+### Important boundary
+[what is reference-derived or estimated, and what still requires measurement]
+
+### Next step
+[open the visible builder, simulate it, compare it, or ask one refinement question]
+```
 
 Never imply that the agent designed a safe crossover, selected arbitrary driver substitutions, approved production artwork, or produced a measured performance result. If the user asks for one of those actions, explain the platform boundary and identify the validation or engineering data required.
 

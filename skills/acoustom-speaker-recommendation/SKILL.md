@@ -9,15 +9,38 @@ Use the Acoustom MCP tools as the source of truth for catalog facts and suitabil
 
 ## Gather the decision inputs
 
-Establish room size, listening preference, preferred format, and budget in USD when they materially affect the recommendation. Ask only for unknown inputs that would change the outcome. A listening distance, placement constraints, or desire for active versus passive speakers may resolve a close choice.
+Establish room size, listening preference, preferred format, and budget in USD when they materially affect the recommendation. For missing room or music context, proactively offer the relevant approved connected source or upload/default fallback before asking the user to type details. Ask only one concise question for information that cannot be obtained that way and would change the outcome. Do not block on optional enrichment when a provisional catalog ranking can still be made with explicit assumptions.
 
-If you already hold the user's listening habits or a playlist from outside Acoustom, record them with `set_music_preferences` so the reasoning and the visible page share the same context.
+If listening taste would materially change a close recommendation and it is unknown, offer the connected music-preference prompt from guided discovery. If the user approves and the agent has a relevant connection, record only the derived preference summary with `set_music_preferences` so the reasoning and visible page share the same context. Do not retrieve or reproduce protected streaming audio.
 
-Use `recommend_speakers` to produce an initial ranking, then use `get_product` for finalists. Move the user to a finalist with `navigate_acoustom` so they can read the same specifications you are citing. Hand off to the comparison skill once the user is weighing specific alternatives. If the user supplies physical room dimensions and wants room-specific evidence, use `simulate_speaker_in_room` after selecting a candidate.
+Use `recommend_speakers` to produce an initial ranking, then use `get_product` for finalists. When the user asks for the best option, do not stop at a single product: load two or three credible candidates into the comparison workflow, compare the specifications that matter, and explain why the primary choice wins for this brief. Move the user to the finalist with `navigate_acoustom` so they can read the same specifications you are citing. If a custom build could address a stated requirement better than the catalog shortlist, proactively offer to validate one and compare it against the finalists; do not build one without the user's agreement. Hand off to the comparison skill once the user is weighing specific alternatives. If room-specific evidence is wanted, use the room-context enrichment flow before simulating when room inputs are missing.
 
 ## Explain the result
 
-Return a concise primary recommendation and, when useful, one alternative with a clear trade-off. Separate:
+After navigating to the finalist and loading the comparison when applicable, use this response structure:
+
+```md
+## Recommendation
+
+**Best fit:** [speaker] — [one-sentence reason]
+
+### Why it fits
+- [requirement] → [catalog fact or suitability reason]
+
+### Key specs
+- [the two to four specifications that matter]
+
+### Trade-off
+[one meaningful limitation or alternative]
+
+### Custom alternative (optional)
+[Offer a curated custom build only when it could address a stated limitation; explain what it would change and ask permission before building.]
+
+### Next step
+[inspect the visible speaker, compare it, simulate it, build the custom alternative, or one short question]
+```
+
+Separate:
 
 - catalog facts returned by the tools;
 - suitability reasoning based on the user's requirements; and

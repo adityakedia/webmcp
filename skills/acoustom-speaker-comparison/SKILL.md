@@ -17,11 +17,39 @@ Reference catalog products by name and custom builds by the `buildId` or name re
 
 Set `includeSimulation` to true when the user wants performance evidence rather than a spec table. Every column is then simulated in the same room, so RT60 and in-room frequency response are comparable. For evidence in the user's own room, apply their room first — via `apply_agent_room_estimate` or the lab controls — and simulate against that instead of the default.
 
+If room data is missing and simulation would change the decision, offer the room-context prompt from guided discovery before using a default room. If listening preference would decide between otherwise close candidates, offer the music-preference prompt instead of asking the user to describe their taste at length.
+
 Do not mix a simulation run in one room with a simulation run in another and present the numbers as a like-for-like comparison.
 
 ## Summarise against the brief
 
-Structure the answer around the user's requirements, not around the spec sheet order:
+Use this response structure after the comparison matrix is visible. Structure the answer around the user's requirements, not around the spec sheet order:
+
+```md
+## Comparison: [candidate names]
+
+**Best match for your brief:** [candidate]
+
+### What matters for your brief
+| Requirement | [candidate] | [candidate] | What it means |
+|---|---|---|---|
+| [requirement] | … | … | … |
+
+### Decision
+- Choose **[candidate]** if …
+- Choose **[candidate]** if …
+
+### Custom alternative (optional)
+[If the shortlist leaves a stated requirement unresolved, offer a curated custom build and explain the specific comparison it would test. Do not create it without agreement.]
+
+### Simulation evidence
+[include only when simulated; state room and provenance]
+
+### Next step
+[one visible action or one short decision question]
+```
+
+Include:
 
 - restate the requirements the comparison is being judged against;
 - for each candidate, give the two or three specifications that actually bear on those requirements;
