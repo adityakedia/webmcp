@@ -466,7 +466,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
       void validateBuild(pending.configuration, controller.signal)
         .then(async (validated) => {
           if (controller.signal.aborted) return;
-          const complete = { ...pending, derived: validated.derived };
+          const complete = { ...pending, derived: validated.derived, specs: validated.specs };
           upsertLocalBuild(complete);
           window.sessionStorage.setItem(
             "acoustom-custom-speaker-profile",

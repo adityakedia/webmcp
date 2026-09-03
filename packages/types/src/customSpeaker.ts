@@ -128,6 +128,8 @@ export interface DerivedSpeakerSpecifications {
 
 export interface CustomSpeakerBuild extends CustomSpeakerConfiguration {
   derived: DerivedSpeakerSpecifications;
+  /** Canonical spec pairs shared with catalog speakers for display. */
+  specs: [string, string][];
 }
 
 export interface ConfigurationOption<T extends string = string> {

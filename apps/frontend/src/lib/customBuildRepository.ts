@@ -81,6 +81,7 @@ export async function hydrateBuildsFromAccount() {
       name: remote.name,
       configuration: remote.configuration,
       derived: validated.derived,
+      specs: validated.specs,
       updatedAt: new Date().toISOString(),
     });
   }

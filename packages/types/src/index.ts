@@ -1,21 +1,5 @@
 import type { AcousticPlatformId } from './customSpeaker';
 
-export interface Speaker {
-  id: string;
-  manufacturer: string;
-  model: string;
-  type: 'bookshelf' | 'floorstanding' | 'monitor' | 'soundbar' | 'portable';
-  frequencyResponse?: number[];
-  sensitivity?: number;
-  directivity?: SpeakerDirectivity;
-  imageUrl?: string;
-}
-
-export interface SpeakerDirectivity {
-  horizontal: number[][];
-  vertical: number[][];
-}
-
 export interface RoomPreset {
   id: string;
   name: string;

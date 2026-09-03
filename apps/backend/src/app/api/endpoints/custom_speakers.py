@@ -15,6 +15,7 @@ from app.schemas.custom_speaker import (
     SimulationProfile,
 )
 from app.services.custom_speaker_catalog import REFERENCE_SYSTEMS
+from app.services.custom_speaker_specs import derive_product_specs
 
 router = APIRouter()
 
@@ -92,7 +93,7 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
     if config.cabinet.finish == "custom_colour":
         warnings.append("Custom colours require finish-sample approval.")
 
-    return CustomSpeakerBuild(
+    build = CustomSpeakerBuild(
         **config.model_dump(),
         derived=DerivedSpeakerSpecifications(
             architecture=architecture,
@@ -172,3 +173,5 @@ async def create_custom_speaker(config: CustomSpeakerConfiguration) -> CustomSpe
             warnings=warnings,
         ),
     )
+    build.specs = derive_product_specs({"derived": build.derived.model_dump(by_alias=True)})
+    return build

@@ -76,51 +76,6 @@ const icon = (m: string) =>
   ) : (
     <SlidersHorizontal />
   );
-const DIMENSIONS: Record<string, Record<string, string>> = {
-  standmount: {
-    compact: "360 × 200 × 280 mm",
-    standard: "440 × 215 × 360 mm",
-    large: "520 × 250 × 430 mm",
-  },
-  floorstanding: {
-    compact: "700 × 250 × 300 mm",
-    standard: "900 × 290 × 310 mm",
-    large: "1180 × 290 × 390 mm",
-  },
-  subwoofer: {
-    compact: "320 × 320 × 360 mm",
-    standard: "380 × 380 × 420 mm",
-    large: "450 × 450 × 480 mm",
-  },
-};
-const WEIGHT: Record<string, Record<string, string>> = {
-  standmount: {
-    compact: "11 kg each",
-    standard: "16 kg each",
-    large: "24 kg each",
-  },
-  floorstanding: {
-    compact: "18 kg each",
-    standard: "26 kg each",
-    large: "40 kg each",
-  },
-  subwoofer: {
-    compact: "8 kg each",
-    standard: "12 kg each",
-    large: "16 kg each",
-  },
-};
-const ampPower = (s?: number) =>
-  !s
-    ? "—"
-    : s < 85
-      ? "50 – 150 W"
-      : s < 88
-        ? "40 – 180 W"
-        : s < 90
-          ? "40 – 200 W"
-          : "30 – 250 W";
-const pretty = (s: string) => s.replaceAll("_", " ");
 const SPEC_ORDER = [
   "System", "Architecture", "Drivers", "Frequency response", "Sensitivity",
   "Nominal impedance", "Recommended amplifier power", "Crossover frequency",
@@ -133,80 +88,6 @@ const SPEC_ORDER = [
   "Compatibility notes", "Measurement required for", "Simulated changes", "Warnings",
   "Reference source", "Source assets",
 ] as const;
-const derive = (b: any): [string, string][] => {
-  const d = b.derived,
-    p = d.simulationProfile,
-    a = d.acousticDesign,
-    c = d.physicalBuild;
-  const isSub = c.format === "subwoofer";
-  return [
-    ["System", p.referenceName],
-    [
-      "Frequency response",
-      `${p.frequencyRangeHz[0]} Hz – ${p.frequencyRangeHz[1]} Hz`,
-    ],
-    [
-      "Sensitivity",
-      p.sensitivityDb ? `${p.sensitivityDb} dB (2.83 V / 1 m)` : "—",
-    ],
-    [
-      "Nominal impedance",
-      p.nominalImpedanceOhm ? `${p.nominalImpedanceOhm} Ω` : "—",
-    ],
-    ["Recommended amplifier power", ampPower(p.sensitivityDb)],
-    [
-      "Crossover frequency",
-      p.crossoverHz.length ? p.crossoverHz.join(" / ") + " Hz" : "—",
-    ],
-    ["Maximum SPL", p.maxSplDb ? `${p.maxSplDb} dB at 1 m` : "—"],
-    [
-      "Amplification",
-      isSub
-        ? "Built-in class-D amplification"
-        : "Passive (external amplification required)",
-    ],
-    ["Cabinet materials", "MDF with internal bracing"],
-    ["Cabinet finishes", pretty(c.finish)],
-    ["Grille", pretty(c.grille)],
-    ["Base", pretty(c.base)],
-    ["Directivity", "—"],
-    [
-      "Inputs",
-      isSub
-        ? "Line-level RCA / Speaker-level"
-        : "Single-wired speaker terminals",
-    ],
-    ["Calibration", "—"],
-    ["Dimensions (H × W × D)", DIMENSIONS[c.format]?.[c.cabinetSize] ?? "—"],
-    ["Weight", WEIGHT[c.format]?.[c.cabinetSize] ?? "—"],
-    ["Alignment", pretty(a.alignment)],
-    ["Bass character", pretty(a.bassCharacter)],
-    ["Net volume", a.netVolumeLitres ? `${a.netVolumeLitres} L` : "—"],
-    ["Port tuning", a.portTuningHz ? `${a.portTuningHz} Hz` : "Sealed"],
-    ["Architecture", d.architecture],
-    ["Drivers", d.drivers.map((driver: { role: string }) => pretty(driver.role)).join(" / ") || "—"],
-    ["Format", c.format],
-    ["Cabinet size", c.cabinetSize],
-    ["Finish family", c.finishFamily],
-    ["Edge profile", pretty(c.edgeProfile)],
-    ["Port diameter", a.portInnerDiameterMm ? `${a.portInnerDiameterMm} mm` : "—"],
-    ["Port length", a.portLengthMm ? `${a.portLengthMm} mm` : "—"],
-    ["Damping", a.dampingDescription ?? "—"],
-    ["Voicing target", a.voicingTarget],
-    ["Measurement status", a.measurementStatus],
-    ["Simulation status", p.status],
-    ["Model type", p.modelType],
-    ["Room size", d.roomRecommendation.roomSize],
-    ["Listening distance", `${d.roomRecommendation.listeningDistanceM} m`],
-    ["Manufacturing status", d.manufacturingStatus],
-    ["Warnings", d.warnings.length ? d.warnings.join("; ") : "None"],
-    ["Compatibility notes", p.compatibilityNotes.join("; ") || "—"],
-    ["Measurement required for", p.measurementRequiredFor.join("; ") || "—"],
-    ["Simulated changes", p.simulatedChanges.join("; ") || "—"],
-    ["Reference source", p.sourceUrl],
-    ["Source assets", p.sourceAssets.map((asset: { description: string }) => asset.description).join("; ") || "—"],
-  ];
-};
 function Player({ source, label }: { source?: string; label: string }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -253,9 +134,6 @@ export default function ComparisonPage({ onBack }: Props) {
     window.addEventListener("acoustom-builds-updated", refresh);
     return () => window.removeEventListener("acoustom-builds-updated", refresh);
   }, []);
-  const [derived, setDerived] = useState<
-    Record<string, { specs: [string, string][]; profile: Profile }>
-  >({});
   const [scrolled, setScrolled] = useState(false);
   const matrixRef = useRef<HTMLElement>(null);
   const catalog = useMemo<Speaker[]>(() => catalogProducts.map((p) => ({
@@ -267,48 +145,6 @@ export default function ComparisonPage({ onBack }: Props) {
     specs: p.specs,
     product: p,
   })), [catalogProducts]);
-  useEffect(() => {
-    let live = true;
-    void Promise.all(
-      saved.map(async (b) => {
-        try {
-          const r = await fetch(apiUrl("/api/custom-speakers/"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(b.configuration),
-          });
-          if (!r.ok) throw Error();
-          const build = await r.json();
-          return [
-            b.id,
-            {
-              specs: derive(build),
-              profile: build.derived.simulationProfile as Profile,
-            },
-          ] as const;
-        } catch {
-          return null;
-        }
-      }),
-    ).then((rows) => {
-      if (live)
-        setDerived(
-          Object.fromEntries(
-            rows.filter(
-              (
-                x,
-              ): x is readonly [
-                string,
-                { specs: [string, string][]; profile: Profile },
-              ] => !!x,
-            ),
-          ),
-        );
-    });
-    return () => {
-      live = false;
-    };
-  }, [saved]);
   const custom = useMemo<Speaker[]>(() => saved.map((b) => ({
     id: `custom:${b.id}`,
     name: b.name,
@@ -316,9 +152,9 @@ export default function ComparisonPage({ onBack }: Props) {
     image: "/images/components/platform-compact.png",
     price: 0,
     configuration: b.configuration,
-    specs: derived[b.id]?.specs ?? [],
-    profile: derived[b.id]?.profile,
-  })), [saved, derived]);
+    specs: b.specs ?? [],
+    profile: b.derived?.simulationProfile as Profile | undefined,
+  })), [saved]);
   const choices = useMemo(() => [...catalog, ...custom], [catalog, custom]);
   const [slots, setSlots] = useState<(Speaker | null)[]>([
     catalog[0] ?? null,

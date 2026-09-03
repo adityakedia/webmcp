@@ -216,3 +216,4 @@ BoxModelInputs = SealedBoxModelInputs | PortedBoxModelInputs
 
 class CustomSpeakerBuild(CustomSpeakerConfiguration):
     derived: DerivedSpeakerSpecifications
+    specs: list[list[str]] = Field(default_factory=list)

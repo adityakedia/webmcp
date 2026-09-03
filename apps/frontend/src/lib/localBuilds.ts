@@ -10,6 +10,7 @@ export type LocalBuild = {
   name: string;
   configuration: CustomSpeakerConfiguration;
   derived?: CustomSpeakerBuild['derived'];
+  specs?: [string, string][];
   createdAt: string;
   updatedAt: string;
 };
