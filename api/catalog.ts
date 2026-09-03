@@ -1,5 +1,3 @@
-import { createClient } from '@neondatabase/neon-js';
-
 type CatalogRow = {
   id: string;
   name: string;
@@ -12,23 +10,29 @@ type CatalogRow = {
   specs: [string, string][];
 };
 
-export default async function handler(request: Request): Promise<Response> {
+type VercelRequest = { method?: string };
+type VercelResponse = {
+  status: (code: number) => VercelResponse;
+  json: (body: unknown) => void;
+};
+
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method !== 'GET') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+    response.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   const dataApiUrl = process.env.NEON_DATA_API_URL;
   if (!dataApiUrl) {
-    return Response.json({ error: 'NEON_DATA_API_URL is not configured' }, { status: 500 });
+    response.status(500).json({ error: 'NEON_DATA_API_URL is not configured' });
+    return;
   }
 
-  const client = createClient({
-    dataApi: { url: dataApiUrl },
-  });
-  const { data, error } = await client.from('speakers').select('*').order('id');
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-
-  return Response.json({ products: data as CatalogRow[] }, {
-    headers: { 'Cache-Control': 'no-store' },
-  });
+  const url = `${dataApiUrl.replace(/\/$/, '')}/speakers?select=*&order=id.asc`;
+  const upstream = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!upstream.ok) {
+    response.status(502).json({ error: `Catalog database returned ${upstream.status}` });
+    return;
+  }
+  response.status(200).json({ products: (await upstream.json()) as CatalogRow[] });
 }
