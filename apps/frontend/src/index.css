@@ -1792,7 +1792,7 @@ footer button {
   padding: 24px;
 }
 .insight-modal {
-  width: min(760px, 100%);
+  width: min(920px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
   background: #efede8;
@@ -1805,7 +1805,7 @@ footer button {
 }
 .modal-metric-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 1px;
   background: #c9c5bd;
   margin: 24px 0 30px;
@@ -1824,7 +1824,8 @@ footer button {
   margin-top: 27px;
 }
 .modal-chart-block .insight-chart {
-  height: 220px;
+  height: 240px;
+  aspect-ratio: 16 / 7;
 }
 .modal-chart-block .mode-chart {
   height: 190px;

@@ -22,7 +22,7 @@ function DecayChart({ rt60, expanded = false }: { rt60: number; expanded?: boole
         viewBox="0 0 100 100"
         role="img"
         aria-label={`Estimated decay to minus 60 decibels at ${rt60.toFixed(2)} seconds`}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
       >
         <path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" />
         <polyline className="chart-line" points={points} />
@@ -79,7 +79,7 @@ function FrequencyChart({ points }: { points: SimulationResult['frequencyRespons
     const y = 50 - (point.gainDb / max) * 40;
     return `${x},${Math.max(8, Math.min(92, y))}`;
   }).join(' ');
-  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Modelled frequency response" preserveAspectRatio="none"><path className="chart-grid-line" d="M0 20H100M0 50H100M0 80H100" /><polyline className="chart-line" points={plotted} /><text x="2" y="98">20 Hz</text><text x="98" y="98" textAnchor="end">20 kHz</text></svg><span className="chart-axis-label chart-axis-left">+{max.toFixed(0)} dB</span><span className="chart-axis-label chart-axis-right">−{max.toFixed(0)} dB</span></div>;
+  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Modelled frequency response" preserveAspectRatio="xMidYMid meet"><path className="chart-grid-line" d="M0 20H100M0 50H100M0 80H100" /><polyline className="chart-line" points={plotted} /><text x="2" y="98">20 Hz</text><text x="98" y="98" textAnchor="end">20 kHz</text></svg><span className="chart-axis-label chart-axis-left">+{max.toFixed(0)} dB</span><span className="chart-axis-label chart-axis-right">−{max.toFixed(0)} dB</span></div>;
 }
 
 function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) {
@@ -102,7 +102,7 @@ function ImpulseChart({ urls }: { urls: SimulationResult['impulseResponses'] }) 
     return () => { cancelled = true; void context.close(); };
   }, [urls.left, urls.right]);
   const points = samples.map((value, index) => `${(index / Math.max(1, samples.length - 1)) * 100},${92 - value * 78}`).join(' ');
-  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Simulated impulse response" preserveAspectRatio="none"><path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" />{samples.length > 0 && <polyline className="chart-line" points={points} />}<text x="2" y="98">0 s</text><text x="98" y="98" textAnchor="end">tail</text></svg></div>;
+  return <div className="insight-chart response-chart"><svg viewBox="0 0 100 100" role="img" aria-label="Simulated impulse response" preserveAspectRatio="xMidYMid meet"><path className="chart-grid-line" d="M0 25H100M0 50H100M0 75H100" />{samples.length > 0 && <polyline className="chart-line" points={points} />}<text x="2" y="98">0 s</text><text x="98" y="98" textAnchor="end">tail</text></svg></div>;
 }
 
 export default function SimulationInsights({ result, room, speakerName }: Props) {
@@ -146,6 +146,23 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
                   ? 'Shorter decay supports precise detail and a tighter presentation.'
                   : 'A balanced decay supports clarity while retaining natural ambience.'}
             </p>
+          </div>
+        </div>
+        <div className="insight-overview insight-detail-metrics">
+          <div className="insight-metric">
+            <span>Early decay time</span>
+            <strong>{result.metrics.earlyDecayTime?.toFixed(2) ?? '—'} s</strong>
+            <small>Early reflections</small>
+          </div>
+          <div className="insight-metric">
+            <span>Clarity (C80)</span>
+            <strong>{result.metrics.clarity?.toFixed(1) ?? '—'} dB</strong>
+            <small>Music clarity</small>
+          </div>
+          <div className="insight-metric">
+            <span>Definition (D50)</span>
+            <strong>{result.metrics.definition != null ? `${(result.metrics.definition * 100).toFixed(0)}%` : '—'}</strong>
+            <small>Speech definition</small>
           </div>
         </div>
         <div className="insight-mini-grid">
@@ -225,8 +242,6 @@ export default function SimulationInsights({ result, room, speakerName }: Props)
               <ModeChart room={room} />
             </div>
             <div className="modal-chart-block"><div className="insight-title"><span>Frequency response</span><small>modelled in-room gain</small></div><FrequencyChart points={analysisResult.frequencyResponse} /></div>
-            <div className="modal-chart-block"><div className="insight-title"><span>Impulse response</span><small>left + right channels</small></div><ImpulseChart urls={analysisResult.impulseResponses} /></div>
-            <div className="modal-chart-block"><div className="insight-title"><span>Frequency response</span><small>modelled in-room gain</small></div><FrequencyChart points={result.frequencyResponse} /></div>
             <div className="modal-chart-block"><div className="insight-title"><span>Impulse response</span><small>left + right channels</small></div><ImpulseChart urls={analysisResult.impulseResponses} /></div>
             <p className="insight-disclaimer">
               Use these values to compare placements and room presets consistently. Final acoustic
