@@ -153,7 +153,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
   const catalog = useMemo<Speaker[]>(
     () =>
       products.map((p) => ({
-        id: `catalog:${p.name}`,
+        id: `catalog:${p.id}`,
         name: p.name,
         type: p.type,
         image: p.image,

@@ -7,7 +7,7 @@ import {
   type NavigationRequest,
   type NavigationResult,
 } from './hooks/useWebMcp';
-import { apiUrl } from './lib/api';
+import { fetchCatalog, type CatalogProduct } from './lib/catalog';
 import { getNeonJwt } from './lib/neonAuth';
 import { readLocalBuilds, writeLocalBuilds, type LocalBuild } from './lib/localBuilds';
 import {
@@ -19,16 +19,7 @@ import ComparisonPage from './components/ComparisonPage';
 import CustomDesignBuilder from './components/CustomDesignBuilder';
 import './catalog-custom.css';
 
-export type Product = {
-  name: string;
-  type: string;
-  price: string;
-  image: string;
-  tone: string;
-  category: string;
-  description: string;
-  specs: [string, string][];
-};
+export type Product = CatalogProduct;
 
 export default function App() {
   const navigate = useNavigate();
@@ -274,12 +265,8 @@ export default function App() {
   }, []);
   useEffect(() => {
     const abort = new AbortController();
-    void fetch(apiUrl('/api/speakers/catalog'), { signal: abort.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Catalog unavailable');
-        return response.json() as Promise<{ products: Product[] }>;
-      })
-      .then(({ products: catalog }) => setProducts(catalog))
+    void fetchCatalog(abort.signal)
+      .then((catalog) => setProducts(catalog))
       .catch((error: unknown) => {
         if (!abort.signal.aborted) console.error('Unable to load speaker catalog', error);
       });
