@@ -14,8 +14,10 @@ type Props = {
   onBack: () => void;
   customBuild?: { name: string; format: string; finish: string; referenceName: string } | null;
   roomPhotos?: NonNullable<ListeningPreferences['roomPhotos']>;
+  onRemoveRoomPhoto?: (dataUrl: string) => void;
   embedded?: boolean;
 };
+
 const presets = [
   { id: 'living_room', name: 'Living room', copy: 'Balanced and natural.' },
   { id: 'reflective', name: 'Lively room', copy: 'Brighter, longer decay.' },
@@ -27,6 +29,7 @@ export default function SimulatorPage({
   onBack,
   customBuild = null,
   roomPhotos = [],
+  onRemoveRoomPhoto,
   embedded = false,
 }: Props) {
   const selectedSpeakerId = useSimulationStore((state) => state.selectedSpeakerId);
@@ -210,7 +213,7 @@ export default function SimulatorPage({
               </button>
             ))}
           </div>
-          <RoomReferenceInput initialPhotos={roomPhotos} />
+          <RoomReferenceInput initialPhotos={roomPhotos} onRemovePhoto={onRemoveRoomPhoto} />
           <button className="refresh-room" onClick={retry}>
             <RotateCcw size={14} /> Refresh simulation
           </button>

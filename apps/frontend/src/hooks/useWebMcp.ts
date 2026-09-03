@@ -1939,6 +1939,83 @@ export function useWebMcp(options: Options): void {
           ),
       },
       {
+        name: 'fill_custom_builder_form',
+        title: 'Fill custom builder form',
+        description:
+          'Fills the visible custom-design builder form on the user\'s screen with the supplied choices, exactly as if the user had clicked them. Use for the choices you gathered from conversation or a recommendation. If the user is not on the custom-design page, call navigate_acoustom(destination: "custom_design") first. The user sees and can change every value.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            fields: {
+              type: 'object',
+              description: 'Builder choices to apply. Only the fields you pass are changed.',
+              properties: {
+                format: { type: 'string', enum: ['standmount', 'floorstanding', 'subwoofer'] },
+                platform: {
+                  type: 'string',
+                  enum: ['two_way_compact', 'two_way_extended', 'three_way_reference', 'subwoofer_active'],
+                },
+                enclosure: { type: 'string', enum: ['ported', 'sealed'] },
+                character: { type: 'string', enum: ['tight', 'balanced', 'extended'] },
+                size: { type: 'string', enum: ['compact', 'standard', 'large'] },
+                grille: { type: 'string', enum: ['none', 'magnetic_fabric', 'perforated_metal'] },
+                base: { type: 'string', enum: ['plinth', 'slim_feet', 'stand'] },
+                edge: { type: 'string', enum: ['soft_radius', 'sculpted_radius'] },
+                finish: { type: 'string', enum: ['walnut', 'black_ash', 'satin_white'] },
+                personalisation: {
+                  type: 'string',
+                  enum: ['none', 'engraving', 'pattern', 'printed_panel', 'decal', 'custom_artwork'],
+                },
+              },
+              additionalProperties: false,
+            },
+            preferences: {
+              type: 'object',
+              description:
+                'Optional brief-question answers shown on the builder\'s first step. Stored as user preferences, separate from the custom-speaker configuration spec.',
+              properties: {
+                soundProfile: { type: 'string', enum: ['warm', 'balanced', 'immersive'] },
+                roomSize: { type: 'string', enum: ['small', 'medium', 'large'] },
+              },
+              additionalProperties: false,
+            },
+            buildName: { type: 'string', minLength: 1, maxLength: 80 },
+            focusStep: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 7,
+              description:
+                'Optional builder step to open so the user sees the filled fields: 0 brief, 1 format, 2 platform, 3 bass, 4 cabinet, 5 finish, 6 personalisation, 7 review.',
+            },
+          },
+          required: [],
+          anyOf: [{ required: ['fields'] }, { required: ['preferences'] }],
+          additionalProperties: false,
+        },
+        annotations: userContentAction,
+        execute: ({ fields, preferences, buildName, focusStep }) => {
+          const fieldCount = fields && typeof fields === 'object' ? Object.keys(fields).length : 0;
+          const preferenceCount =
+            preferences && typeof preferences === 'object' ? Object.keys(preferences).length : 0;
+          if (!fieldCount && !preferenceCount)
+            throw new Error('Set at least one builder choice in fields or preferences.');
+          const state = useAgentViewStore.getState();
+          state.requestBuilderForm({
+            fields: (fields ?? {}) as Record<string, string>,
+            ...(preferenceCount ? { preferences: preferences as { soundProfile?: 'warm' | 'balanced' | 'immersive'; roomSize?: 'small' | 'medium' | 'large' } } : {}),
+            ...(typeof buildName === 'string' ? { buildName } : {}),
+            ...(typeof focusStep === 'number' ? { focusStep } : {}),
+          });
+          return {
+            ok: true,
+            appliedFields: Object.keys((fields ?? {}) as Record<string, string>),
+            appliedPreferences: Object.keys((preferences ?? {}) as Record<string, string>),
+            guidance:
+              'The form is filled on screen for the user to review. The user is on the custom-design page only if you navigated there first; mention any fields you could not apply.',
+          };
+        },
+      },
+      {
         name: 'validate_custom_speaker_build',
         title: 'Validate custom speaker build',
         description:

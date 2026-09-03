@@ -24,6 +24,30 @@ export type MusicPreferences = {
   source?: string;
   capturedAt: string;
 };
+/** Visible custom-builder choice fields the agent may set. Keys mirror the builder's state. */
+export type BuilderFieldKey =
+  | 'format'
+  | 'platform'
+  | 'enclosure'
+  | 'character'
+  | 'size'
+  | 'grille'
+  | 'base'
+  | 'edge'
+  | 'finish'
+  | 'personalisation';
+export type BuilderFormRequest = {
+  fields: Partial<Record<BuilderFieldKey, string>>;
+  /** Brief-question preferences. Kept separate from the builder's choice fields and from the
+   * CustomSpeakerConfiguration spec, which the builder derives independently. */
+  preferences?: {
+    soundProfile?: 'warm' | 'balanced' | 'immersive';
+    roomSize?: 'small' | 'medium' | 'large';
+  };
+  buildName?: string;
+  focusStep?: number;
+  requestedAt: string;
+};
 
 interface AgentViewStore {
   /** Comparison slot ids: `catalog:<productId>` or `custom:<localBuildId>`. */
@@ -34,11 +58,14 @@ interface AgentViewStore {
   /** Local build id the custom builder should open. */
   requestedCustomBuildId: string | null;
   musicPreferences: MusicPreferences | null;
+  builderFormRequest: BuilderFormRequest | null;
   setComparisonSelection: (ids: string[], source: ComparisonSelectionSource) => void;
   requestReferenceTrack: (request: Omit<ReferenceTrackRequest, 'requestedAt'>) => void;
   setActiveReferenceTrackLabel: (label: string | null) => void;
   requestCustomBuild: (buildId: string | null) => void;
   setMusicPreferences: (preferences: Omit<MusicPreferences, 'capturedAt'> | null) => void;
+  requestBuilderForm: (request: Omit<BuilderFormRequest, 'requestedAt'>) => void;
+  clearBuilderFormRequest: () => void;
 }
 
 export const MAX_COMPARISON_SLOTS = 5;
@@ -50,6 +77,7 @@ export const useAgentViewStore = create<AgentViewStore>((set) => ({
   activeReferenceTrackLabel: null,
   requestedCustomBuildId: null,
   musicPreferences: null,
+  builderFormRequest: null,
   setComparisonSelection: (ids, source) =>
     set({
       comparisonSelection: ids.slice(0, MAX_COMPARISON_SLOTS),
@@ -65,4 +93,7 @@ export const useAgentViewStore = create<AgentViewStore>((set) => ({
         ? { ...preferences, capturedAt: new Date().toISOString() }
         : null,
     }),
+  requestBuilderForm: (request) =>
+    set({ builderFormRequest: { ...request, requestedAt: new Date().toISOString() } }),
+  clearBuilderFormRequest: () => set({ builderFormRequest: null }),
 }));

@@ -1915,6 +1915,31 @@ footer button {
   margin: 0;
   width: 70px;
 }
+.room-reference-thumb {
+  position: relative;
+  display: block;
+}
+.room-reference-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 1px solid #bcb3a6;
+  border-radius: 50%;
+  background: #f9f7f2;
+  color: #37322d;
+  cursor: pointer;
+  line-height: 1;
+}
+.room-reference-remove:hover {
+  background: #37322d;
+  color: #f9f7f2;
+}
 .room-reference-preview img {
   display: block;
   width: 70px;

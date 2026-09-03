@@ -1,19 +1,31 @@
 import { useRef, useState } from 'react';
-import { ImagePlus, LoaderCircle } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X } from 'lucide-react';
 import { apiUrl } from '../lib/api';
 import { useSimulationStore } from '../store/simulation';
 import type { ListeningPreferences } from '../lib/localBuilds';
 
-export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhotos?: NonNullable<ListeningPreferences['roomPhotos']> }) {
+export default function RoomReferenceInput({
+  initialPhotos = [],
+  onRemovePhoto,
+}: {
+  initialPhotos?: NonNullable<ListeningPreferences['roomPhotos']>;
+  onRemovePhoto?: (dataUrl: string) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const references = useSimulationStore((state) => state.roomReferenceAssets);
   const setReferences = useSimulationStore((state) => state.setRoomReferenceAssets);
   const [status, setStatus] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const MAX_ROOM_REFERENCE_IMAGES = 6;
+
   async function upload(files: FileList | null) {
     const selected = files ? Array.from(files) : [];
     if (!selected.length) return;
+    if (references.length + selected.length > MAX_ROOM_REFERENCE_IMAGES) {
+      setStatus(`You can keep up to ${MAX_ROOM_REFERENCE_IMAGES} room images. Remove one before adding more.`);
+      return;
+    }
     setUploading(true);
     setStatus('Preparing room images for your agent…');
     const form = new FormData();
@@ -23,9 +35,10 @@ export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhot
       const response = await fetch(apiUrl('/api/room-references'), { method: 'POST', body: form });
       if (!response.ok) throw new Error(`Room image upload failed (${response.status})`);
       const result = (await response.json()) as { references: typeof references };
-      setReferences(result.references);
+      const combined = [...references, ...result.references];
+      setReferences(combined);
       setStatus(
-        `${result.references.length} room image${result.references.length === 1 ? '' : 's'} ready for your agent to inspect.`
+        `${combined.length} room image${combined.length === 1 ? '' : 's'} ready for your agent to inspect.`
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not prepare the room images.');
@@ -33,6 +46,11 @@ export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhot
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
     }
+  }
+
+  function removeReference(id: string) {
+    setReferences(references.filter((reference) => reference.id !== id));
+    setStatus(null);
   }
 
   return (
@@ -66,7 +84,17 @@ export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhot
         <div className="room-reference-preview">
           {references.map((reference) => (
             <figure key={reference.id}>
-              <img src={reference.imageUrl} alt={`Room reference: ${reference.fileName}`} />
+              <span className="room-reference-thumb">
+                <img src={reference.imageUrl} alt={`Room reference: ${reference.fileName}`} />
+                <button
+                  type="button"
+                  className="room-reference-remove"
+                  aria-label={`Remove ${reference.fileName}`}
+                  onClick={() => removeReference(reference.id)}
+                >
+                  <X size={11} />
+                </button>
+              </span>
               <figcaption>{reference.fileName}</figcaption>
             </figure>
           ))}
@@ -74,7 +102,24 @@ export default function RoomReferenceInput({ initialPhotos = [] }: { initialPhot
       )}
       {initialPhotos.length > 0 && (
         <div className="room-reference-preview build-room-photos">
-          {initialPhotos.map((photo) => <figure key={`${photo.name}-${photo.dataUrl.slice(-12)}`}><img src={photo.dataUrl} alt={photo.name} /><figcaption>{photo.name}</figcaption></figure>)}
+          {initialPhotos.map((photo) => (
+            <figure key={`${photo.name}-${photo.dataUrl.slice(-12)}`}>
+              <span className="room-reference-thumb">
+                <img src={photo.dataUrl} alt={photo.name} />
+                {onRemovePhoto && (
+                  <button
+                    type="button"
+                    className="room-reference-remove"
+                    aria-label={`Remove ${photo.name}`}
+                    onClick={() => onRemovePhoto(photo.dataUrl)}
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </span>
+              <figcaption>{photo.name}</figcaption>
+            </figure>
+          ))}
         </div>
       )}
     </section>

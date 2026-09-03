@@ -266,6 +266,7 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     setStep(7);
   };
   const requestedBuildId = useAgentViewStore((state) => state.requestedCustomBuildId);
+  const builderFormRequest = useAgentViewStore((state) => state.builderFormRequest);
   useEffect(() => {
     if (!requestedBuildId) return;
     if (activeBuildId === requestedBuildId) return;
@@ -275,6 +276,47 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     // and capturing it would re-trigger the effect for the same build id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedBuildId, builds, activeBuildId]);
+  useEffect(() => {
+    if (!builderFormRequest) return;
+    const { fields, preferences: briefPreferences, buildName: requestedName, focusStep } = builderFormRequest;
+    const categoryByField: Record<string, Category> = {
+      format: 'format',
+      platform: 'platform',
+      enclosure: 'bass',
+      character: 'bass',
+      size: 'cabinet',
+      grille: 'cabinet',
+      base: 'cabinet',
+      edge: 'cabinet',
+      finish: 'finish',
+      personalisation: 'personalisation',
+    };
+    setState((current) => {
+      const next = { ...current, ...(fields as unknown as Partial<typeof current>) };
+      if (fields.format && !fields.platform)
+        next.platform = fields.format === 'subwoofer' ? 'subwoofer_active' : current.platform;
+      if (fields.platform && !fields.format)
+        next.format =
+          fields.platform === 'subwoofer_active'
+            ? 'subwoofer'
+            : current.format === 'subwoofer'
+              ? 'standmount'
+              : current.format;
+      return next;
+    });
+    setTouched((current) => {
+      const categories = Object.keys(fields)
+        .map((field) => categoryByField[field])
+        .filter((category): category is Category => Boolean(category));
+      return [...current, ...categories.filter((category) => !current.includes(category))];
+    });
+    if (requestedName) setBuildName(requestedName);
+    if (briefPreferences && Object.keys(briefPreferences).length)
+      setPreferences((p) => ({ ...p, ...briefPreferences }));
+    if (typeof focusStep === 'number')
+      setStep(Math.max(0, Math.min(ALL_CATEGORIES.length, Math.trunc(focusStep))));
+    useAgentViewStore.getState().clearBuilderFormRequest();
+  }, [builderFormRequest]);
   const newBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {
       window.alert(
@@ -386,6 +428,13 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
           }}
           onBack={() => setStep(7)}
           roomPhotos={preferences.roomPhotos ?? (preferences.roomPhoto ? [preferences.roomPhoto] : [])}
+          onRemoveRoomPhoto={(dataUrl) =>
+            setPreferences((p) => {
+              const photos = p.roomPhotos ?? (p.roomPhoto ? [p.roomPhoto] : []);
+              const remaining = photos.filter((item) => item.dataUrl !== dataUrl);
+              return { ...p, roomPhotos: remaining.length ? remaining : undefined, roomPhoto: undefined };
+            })
+          }
         />
       </main>
     );
