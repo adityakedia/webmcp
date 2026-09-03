@@ -527,9 +527,10 @@ export default function CustomDesignBuilder({ products, onBack }: Props) {
     if (!requestedBuildId) return;
     if (activeBuildId === requestedBuildId) return;
     const build = builds.find((item) => item.id === requestedBuildId);
-    if (build) {
-      activateBuild(requestedBuildId);
-    }
+    if (build) activateBuild(requestedBuildId);
+    // activateBuild is intentionally omitted: it is rebuilt on every render
+    // and capturing it would re-trigger the effect for the same build id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedBuildId, builds, activeBuildId]);
   const newBuild = () => {
     if (builds.length >= MAX_LOCAL_BUILDS) {

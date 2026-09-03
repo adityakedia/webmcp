@@ -235,7 +235,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
     setChooser(null);
   };
   const available = (i: number) =>
-    choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.name === s.name));
+    choices.filter((s) => !resolvedSlots.some((x, n) => n !== i && x?.id === s.id));
   useEffect(() => {
     if (!selected.length && catalog[0]) setSlots([catalog[0], null, null, null, null]);
   }, [catalog, selected.length]);
@@ -441,7 +441,7 @@ export default function ComparisonPage({ products, onBack }: Props) {
             </header>
             <div className="speaker-modal-list">
               {available(chooser).map((s) => (
-                <button key={`${s.type}:${s.name}`} onClick={() => setSlot(chooser, s)}>
+                <button key={s.id} onClick={() => setSlot(chooser, s)}>
                   <img src={s.image} alt="" />
                   <span>
                     <strong>{s.name}</strong>
