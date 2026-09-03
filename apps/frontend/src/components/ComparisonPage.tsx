@@ -20,7 +20,8 @@ import type { CustomSpeakerConfiguration, SimulationResult } from '@acoustom/typ
 import type { Product } from '../App';
 import { apiUrl } from '../lib/api';
 import { readLocalBuilds, type LocalBuild } from '../lib/localBuilds';
-import { deriveBuildData } from '../lib/customBuildDerivation';
+import { deriveBuildData, STANDARD_SPEC_KEYS } from '../lib/customBuildDerivation';
+import { customBuildPrice } from '../lib/customBuildOptions';
 import { renderSimulatedWav } from '../lib/simulatedAudio';
 import { useAgentViewStore } from '../store/agentView';
 type Props = {
@@ -71,53 +72,6 @@ const icon = (m: string) =>
   ) : (
     <SlidersHorizontal />
   );
-const SPEC_ORDER = [
-  'System',
-  'Architecture',
-  'Drivers',
-  'Frequency response',
-  'Sensitivity',
-  'Nominal impedance',
-  'Recommended amplifier power',
-  'Crossover frequency',
-  'Maximum SPL',
-  'Amplification',
-  'Inputs',
-  'Calibration',
-  'Wireless',
-  'Room correction',
-  'Directivity',
-  'Format',
-  'Cabinet size',
-  'Cabinet materials',
-  'Cabinet finishes',
-  'Finish family',
-  'Grille',
-  'Base',
-  'Edge profile',
-  'Dimensions (H × W × D)',
-  'Weight',
-  'Alignment',
-  'Bass character',
-  'Net volume',
-  'Port tuning',
-  'Port diameter',
-  'Port length',
-  'Damping',
-  'Voicing target',
-  'Room size',
-  'Listening distance',
-  'Simulation status',
-  'Model type',
-  'Measurement status',
-  'Manufacturing status',
-  'Compatibility notes',
-  'Measurement required for',
-  'Simulated changes',
-  'Warnings',
-  'Reference source',
-  'Source assets',
-] as const;
 function Player({ source, label }: { source?: string; label: string }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -169,19 +123,20 @@ export default function ComparisonPage({ products, onBack }: Props) {
   const custom = useMemo<Speaker[]>(
     () =>
       saved.map((b) => {
-        // Specs and simulation data are fully determined by the stored
-        // configuration, so derive them on the spot for builds saved before
-        // validation completed or by older versions.
-        const fallback = b.specs?.length && b.derived ? null : deriveBuildData(b.configuration);
+        // Specs, simulation data and price are fully determined by the stored
+        // configuration, so derive them on the spot. Stored server specs are
+        // ignored here: they carry engineering commentary the matrix must not
+        // show, and the derived values are identical.
+        const derivedData = deriveBuildData(b.configuration);
         return {
           id: `custom:${b.id}`,
           name: b.name,
           type: 'Custom design',
           image: '/images/components/platform-compact.png',
-          price: 0,
+          price: customBuildPrice(b.configuration),
           configuration: b.configuration,
-          specs: b.specs?.length ? b.specs : (fallback?.specs ?? []),
-          profile: b.derived?.simulationProfile ?? fallback?.derived.simulationProfile,
+          specs: derivedData.specs,
+          profile: derivedData.derived.simulationProfile,
         };
       }),
     [saved]
@@ -233,11 +188,11 @@ export default function ComparisonPage({ products, onBack }: Props) {
   );
   const metrics = useMemo(() => {
     const available = new Set(selected.flatMap((speaker) => speaker.specs.map(([label]) => label)));
-    const ordered = SPEC_ORDER.filter((label) => available.has(label));
+    const standard = STANDARD_SPEC_KEYS.filter((label) => available.has(label));
     const additional = Array.from(available).filter(
-      (label) => !SPEC_ORDER.includes(label as (typeof SPEC_ORDER)[number])
+      (label) => !(STANDARD_SPEC_KEYS as readonly string[]).includes(label)
     );
-    return [...ordered, ...additional];
+    return [...standard, ...additional];
   }, [selected]);
   const setSlot = (i: number, s: Speaker | null) => {
     setSlots((all) => all.map((x, n) => (n === i ? s : x)));

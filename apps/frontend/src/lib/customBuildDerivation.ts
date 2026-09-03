@@ -431,83 +431,149 @@ const ampPower = (sensitivityDb: number | undefined) => {
   return '30 – 250 W';
 };
 
-const pretty = (value: string) => value.replace(/_/g, ' ');
+const hz = (value: number) => (value >= 1000 ? `${value / 1000} kHz` : `${value} Hz`);
 
-/** Convert derived data into the canonical [key, value] spec pairs for display. */
+const FINISH_LABELS: Record<DerivedSpeakerSpecifications['physicalBuild']['finish'], string> = {
+  walnut: 'Natural walnut',
+  oak: 'Oak',
+  black_ash: 'Black ash',
+  satin_white: 'Satin white',
+  satin_black: 'Satin black',
+  deep_blue: 'Deep blue',
+  custom_colour: 'Custom colour',
+};
+
+const GRILLE_LABELS: Record<DerivedSpeakerSpecifications['physicalBuild']['grille'], string> = {
+  none: 'Open (no grille)',
+  magnetic_fabric: 'Magnetic fabric',
+  perforated_metal: 'Perforated metal',
+};
+
+const BASE_LABELS: Record<DerivedSpeakerSpecifications['physicalBuild']['base'], string> = {
+  plinth: 'Plinth',
+  slim_feet: 'Slim feet',
+  stand: 'Stand',
+};
+
+const ARCHITECTURE_LABELS: Record<DerivedSpeakerSpecifications['architecture'], string> = {
+  full_range: 'Full-range',
+  two_way: '2-way',
+  three_way: '3-way',
+  subwoofer: 'Subwoofer',
+};
+
+/**
+ * The standard spec schema: the full ordered vocabulary of spec keys used by
+ * the public catalog speakers. Custom builds must present only these keys in
+ * the comparison matrix — no commentary or engineering-only rows.
+ */
+export const STANDARD_SPEC_KEYS = [
+  'System',
+  'Speaker type',
+  'Acoustic loading',
+  'Frequency response',
+  'Low-frequency cutoff',
+  'High-frequency cutoff',
+  'Frequency response (-6 dB)',
+  'Frequency-response tolerance',
+  'Sensitivity',
+  'Nominal impedance',
+  'Minimum impedance',
+  'IEC long-term power handling',
+  'Recommended amplifier power',
+  'Built-in amplifier power',
+  'Crossover frequency',
+  'Crossover configuration',
+  'Crossover topology',
+  'Tweeter',
+  'Midrange / woofer',
+  'Midrange',
+  'Woofers',
+  'Maximum SPL',
+  'Amplification',
+  'Directivity',
+  'Horizontal dispersion',
+  'Vertical dispersion',
+  'Inputs',
+  'Digital connectivity',
+  'Analog connectivity',
+  'Calibration',
+  'Wireless',
+  'Room correction',
+  'DSP',
+  'Baffle',
+  'Cabinet materials',
+  'Cabinet finishes',
+  'Grille',
+  'Base',
+  'Placement class',
+  'Recommended use',
+  'Dimensions (H × W × D)',
+  'Dimensions incl. feet / grille / stand',
+  'Weight',
+] as const;
+
+/** Derive the standard catalog spec rows from derived build data. */
 export function deriveSpecs(d: DerivedSpeakerSpecifications): [string, string][] {
   const p = d.simulationProfile;
-  const a = d.acousticDesign;
   const c = d.physicalBuild;
   const isSub = c.format === 'subwoofer';
-  return [
-    ['System', p.referenceName],
+  const isPorted = d.acousticDesign.alignment === 'ported';
+  const roomUse: Record<string, string> = {
+    small: 'small rooms',
+    medium: 'small-to-medium rooms',
+    large: 'medium-to-large rooms',
+  };
+  const system = isSub
+    ? `Active ${d.acousticDesign.alignment} subwoofer`
+    : `${ARCHITECTURE_LABELS[d.architecture]} ${isPorted ? 'ported' : 'sealed'} ${c.format}`;
+  const rows: [string, string][] = [
+    ['System', system],
     [
-      'Frequency response',
-      `${p.frequencyRangeHz[0]} Hz – ${p.frequencyRangeHz[1]} Hz`,
+      'Speaker type',
+      isSub ? 'Active subwoofer loudspeaker' : `Passive ${c.format} loudspeaker`,
     ],
+    ['Acoustic loading', isPorted ? 'Bass reflex, rear ported' : 'Sealed enclosure'],
+    ['Frequency response', `${hz(p.frequencyRangeHz[0])} – ${hz(p.frequencyRangeHz[1])}`],
+    ['Low-frequency cutoff', hz(p.frequencyRangeHz[0])],
+    ['High-frequency cutoff', hz(p.frequencyRangeHz[1])],
+    ['Frequency-response tolerance', 'Not specified'],
     ['Sensitivity', p.sensitivityDb ? `${p.sensitivityDb} dB (2.83 V / 1 m)` : '—'],
     ['Nominal impedance', p.nominalImpedanceOhm ? `${p.nominalImpedanceOhm} Ω` : '—'],
-    ['Recommended amplifier power', ampPower(p.sensitivityDb)],
+    [
+      'Recommended amplifier power',
+      isSub ? 'Not applicable (amplification built in)' : ampPower(p.sensitivityDb),
+    ],
     [
       'Crossover frequency',
-      p.crossoverHz.length ? p.crossoverHz.map((hz) => String(hz)).join(' / ') + ' Hz' : '—',
+      p.crossoverHz.length ? p.crossoverHz.map(hz).join(' / ') : 'Not specified',
+    ],
+    [
+      'Crossover configuration',
+      isSub ? 'Active low-pass crossover' : `${ARCHITECTURE_LABELS[d.architecture]} passive crossover`,
     ],
     ['Maximum SPL', p.maxSplDb ? `${p.maxSplDb} dB at 1 m` : '—'],
     [
       'Amplification',
       isSub ? 'Built-in class-D amplification' : 'Passive (external amplification required)',
     ],
+    ['Directivity', 'Not specified by manufacturer'],
+    ['Inputs', isSub ? 'Line-level RCA / Speaker-level' : 'Passive speaker-level connection'],
+    ['Calibration', isSub ? 'Not specified' : 'None (passive crossover)'],
+    ['Wireless', isSub ? 'Not specified' : 'None'],
+    ['Room correction', isSub ? 'Not specified' : 'None; external DSP may be used'],
     ['Cabinet materials', 'MDF with internal bracing'],
-    ['Cabinet finishes', pretty(c.finish)],
-    ['Grille', pretty(c.grille)],
-    ['Base', pretty(c.base)],
-    ['Directivity', '—'],
-    ['Inputs', isSub ? 'Line-level RCA / Speaker-level' : 'Single-wired speaker terminals'],
-    ['Calibration', '—'],
-    ['Wireless', '—'],
-    ['Room correction', '—'],
+    ['Cabinet finishes', FINISH_LABELS[c.finish]],
+    ['Grille', GRILLE_LABELS[c.grille]],
+    ['Base', BASE_LABELS[c.base]],
+    [
+      'Recommended use',
+      isSub
+        ? `Low-frequency extension / ${roomUse[d.roomRecommendation.roomSize]}`
+        : `Stereo listening / ${roomUse[d.roomRecommendation.roomSize]}`,
+    ],
     ['Dimensions (H × W × D)', DIMENSIONS[c.format]?.[c.cabinetSize] ?? '—'],
     ['Weight', WEIGHT[c.format]?.[c.cabinetSize] ?? '—'],
-    ['Alignment', pretty(a.alignment)],
-    ['Bass character', pretty(a.bassCharacter)],
-    ['Net volume', a.netVolumeLitres ? `${a.netVolumeLitres} L` : '—'],
-    ['Port tuning', a.portTuningHz ? `${a.portTuningHz} Hz` : 'Sealed'],
-    ['Architecture', d.architecture],
-    [
-      'Drivers',
-      d.drivers.map((driver) => pretty(driver.role)).join(' / ') || '—',
-    ],
-    ['Format', c.format],
-    ['Cabinet size', c.cabinetSize],
-    ['Finish family', c.finishFamily],
-    ['Edge profile', pretty(c.edgeProfile)],
-    ['Port diameter', a.portInnerDiameterMm ? `${a.portInnerDiameterMm} mm` : '—'],
-    ['Port length', a.portLengthMm ? `${a.portLengthMm} mm` : '—'],
-    ['Damping', a.dampingDescription ?? '—'],
-    ['Damping mass', a.dampingMassG ? `${a.dampingMassG} g` : '—'],
-    ['Baffle width', a.baffleWidthMm ? `${a.baffleWidthMm} mm` : '—'],
-    ['Baffle height', a.baffleHeightMm ? `${a.baffleHeightMm} mm` : '—'],
-    ['Baffle-step adjustment', `${a.baffleStepDb >= 0 ? '+' : ''}${a.baffleStepDb} dB`],
-    [
-      'Grille HF adjustment',
-      `${a.grilleHighFrequencyTrimDb >= 0 ? '+' : ''}${a.grilleHighFrequencyTrimDb} dB`,
-    ],
-    ['Crossover preset', a.crossoverPreset],
-    ['Voicing target', a.voicingTarget],
-    ['Measurement status', a.measurementStatus],
-    ['Simulation status', p.status],
-    ['Model type', p.modelType],
-    ['Room size', d.roomRecommendation.roomSize],
-    ['Listening distance', `${d.roomRecommendation.listeningDistanceM} m`],
-    ['Manufacturing status', d.manufacturingStatus],
-    ['Warnings', d.warnings.length ? d.warnings.join('; ') : 'None'],
-    ['Compatibility notes', p.compatibilityNotes.join('; ') || '—'],
-    ['Measurement required for', p.measurementRequiredFor.join('; ') || '—'],
-    ['Simulated changes', p.simulatedChanges.join('; ') || '—'],
-    ['Reference source', p.sourceUrl],
-    [
-      'Source assets',
-      p.sourceAssets.map((asset) => asset.description).join('; ') || '—',
-    ],
   ];
+  return rows;
 }
