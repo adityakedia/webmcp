@@ -124,7 +124,7 @@ export const acoustomOverview = {
       'People choosing hi-fi loudspeakers who want evidence for the decision rather than marketing copy.',
     currency: 'USD. Catalog prices are per pair.',
     sessionModel:
-      'Use the Codex built-in/in-app browser as the shared user-visible workspace. If that browser is active but Acoustom is not open, open Acoustom in a tab there and keep all work in that same in-app browser context. Do not use cloud/background browsing, temporary hidden tabs, headless browsers, or a separate browser context. If the built-in browser itself is not active, ask the user to open it from the Codex toolbar first.',
+      'Use the Codex built-in/in-app browser as the shared user-visible workspace. Follow this priority: (1) inspect it and reuse the exact tab if the Acoustom URL is already loaded; never duplicate or replace that tab; (2) if it is not loaded, ask the user to open the Acoustom URL in the in-app browser and wait for it to load; (3) only if the user asks the agent to open it, or cannot do so, open Acoustom in the active in-app browser. Never use cloud/background browsing, temporary hidden tabs, headless browsers, or a separate browser context. A chat response ends a model turn, not the shared browser session: after asking for input, leave the existing Acoustom tab open on the relevant editable view, do not close it or replace it, and resume in that tab with get_user_context on the next turn. The agent host controls the actual tab lifetime, so this is a behavioural requirement rather than a technical guarantee. If the built-in browser itself is unavailable, ask the user to open it from the Codex toolbar first.',
   },
   whatYouCanDoForTheUser: [
     'Understand their requirements and recommend the catalog speakers that fit, with the reasons stated.',
@@ -212,7 +212,7 @@ export const acoustomOverview = {
     ],
   },
   howToStart: [
-    'Use the Codex built-in/in-app browser for Acoustom. If it is active and Acoustom is not open, open Acoustom in that shared browser; if the built-in browser is not active, ask the user to open it from the toolbar before continuing.',
+    'Use the Codex built-in/in-app browser for Acoustom. First inspect and reuse an existing tab that already has the Acoustom URL loaded. If it is not loaded, ask the user to open the URL there; only if they ask the agent to open it or cannot do so may the agent open it in that same browser. If the built-in browser is unavailable, ask the user to open it from the toolbar before continuing.',
     'Call get_user_context to see what this session already holds: room, selected speaker, comparison set, saved builds, music preferences, bag.',
     'For every broad buying request, load acoustom-guided-discovery before recommending or inspecting products. It is the required entry point, not an optional alternative.',
     'In the first response, state what is known, then ask only for the requirements that would change the answer or ask explicit permission to proceed with named assumptions. Do not rank before one of those happens.',

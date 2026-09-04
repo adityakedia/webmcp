@@ -9,7 +9,15 @@ Acoustom is a loudspeaker site with a live catalog, a five-slot comparison matri
 
 ## Shared browser session
 
-Use the Codex built-in/in-app browser as the shared user-visible workspace. If the built-in browser is active but Acoustom is not open, open Acoustom in a tab there before using WebMCP. Do not use the cloud browser, background execution, temporary hidden tabs, headless browsers, or a separate browser context. If the built-in browser itself is not active, ask the user to open it from the Codex toolbar before continuing.
+Use the Codex built-in/in-app browser as the shared user-visible workspace. Follow this order without skipping ahead:
+
+1. **Reuse first.** Inspect the in-app browser. If the Acoustom URL is already loaded in a tab, use that exact tab; do not open, replace, or duplicate it.
+2. **Ask second.** If Acoustom is not loaded there, ask the user to open the Acoustom URL in the in-app browser and wait for it to load.
+3. **Open last.** Only if the user asks the agent to open it, or cannot do so, open Acoustom in the active in-app browser yourself. Never use cloud/background browsing, a temporary hidden tab, a headless browser, or a separate browser context.
+
+If the in-app browser itself is unavailable, ask the user to open it from the Codex toolbar before continuing.
+
+**A chat response ends a model turn; it does not end the shared browser session.** After asking for input, leave the existing Acoustom tab open on the most useful editable view (normally the Listening Lab for room context). Do not close the tab, navigate away, create a replacement tab, or describe the workflow as finished merely because you are waiting for the user's reply. On the next turn, resume in that same tab and call `get_user_context` before asking for already-known information. The browser and agent host ultimately own tab lifetime, so this instruction reduces avoidable closure but cannot technically guarantee a tab remains open.
 
 ## Response mode
 
@@ -22,8 +30,35 @@ For a broad onboarding request, use:
 
 **What I understand:** [the brief and any assumptions]
 **Recommended path:** [catalog / comparison / room simulation / custom build]
-**Optional context:** [concrete offer to fetch from connected source or upload — see templates below]
-**Next step:** [one action the user can take, or one short question — MUST include fetch/upload offers]
+
+### Choose how to share room context
+
+- **Fetch from a connected source** — [specific available source, e.g. Drive or Dropbox]
+- **Upload here** — a room photo or floor plan
+- **Tell me roughly** — dimensions, amp status, budget, and music taste
+- **Use assumptions** — [state the exact assumptions]
+
+Reply with one option, or combine them. Keep this question open while you decide.
+```
+
+Never put a list of alternatives inside a single `**Next step:**` sentence. Use a short heading and bullets whenever there are two or more choices. Keep each bullet to one action and its outcome. Only offer sources the agent can actually access in the current session.
+
+For example, when room, amplifier, and budget are unknown:
+
+```md
+## Let's find the right setup
+
+**What I understand:** You want a home speaker. I do not yet know your room, budget, music taste, or whether you own an amplifier.
+**Recommended path:** Match catalog speakers to your room, then compare the finalists in the Listening Lab.
+
+### Choose how to share room context
+
+- **Fetch from connected Drive or Dropbox** — I’ll look for a room photo or floor plan.
+- **Upload here** — share a room photo or floor plan in this chat.
+- **Tell me roughly** — room dimensions, whether you have an amp, your budget, and your music taste.
+- **Use assumptions** — medium living room with balanced sound; I’ll label them clearly.
+
+I’ll keep the Listening Lab open while you decide.
 ```
 
 Call `get_acoustom_overview` first when the site is unfamiliar. It returns what the platform does, what it deliberately does not do, the page map, and which tools belong to each capability.
