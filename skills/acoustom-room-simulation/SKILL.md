@@ -14,7 +14,7 @@ Use the room simulator to estimate the interaction of a supported speaker profil
 - Use `get_room_simulation_presets` when the user has not supplied surface details. Use per-surface absorption only when the user has sufficiently specific room information.
 - To read or drive what the user is watching, use `get_current_room_spec`, `get_live_simulation_result`, `set_listening_lab_speaker`, and `refresh_room_simulation`. The lab re-simulates automatically whenever the room or the selected speaker changes, so prefer reading the live result over re-running the same simulation through the API.
 
-Land the user in the lab with `navigate_acoustom` (`destination: listening_lab`, optionally `speakerName`) before discussing a result, so the room you describe is the room on screen.
+Land the user in the lab with `navigate_acoustom` (`destination: listening_lab`, optionally `speakerName`) before running or discussing a result, so the room and simulation remain visible. Run the simulation, briefly report that it is underway, and continue to the result without asking for an intermediate confirmation.
 
 When room dimensions, layout, or surface assumptions are missing and the result would be used for a decision, offer the consent-based room-context prompt from guided discovery. If the user approves and a relevant connected source is available, first identify the candidate room files for the user to approve; otherwise use an editable default. Never fetch private files without that approval.
 

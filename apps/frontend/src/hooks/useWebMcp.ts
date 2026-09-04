@@ -891,6 +891,7 @@ export function useWebMcp(options: Options): void {
           version: 5,
           agentProtocol: {
             firstTurn: [
+              'Use the Codex built-in/in-app browser as the shared user-visible workspace. If it is active but Acoustom is not open, open Acoustom in a tab there; if the built-in browser is not active, ask the user to open it from the Codex toolbar before continuing. Do not use cloud/background, temporary, hidden, headless, or separate browser contexts.',
               'Call get_user_context to see what the user’s view already holds, and get_acoustom_overview when the site or tool set is unfamiliar.',
               'For every broad buying request, load acoustom-guided-discovery before recommending or inspecting products. The first response must establish context, not announce a winner.',
               'State the requirement already known, identify only the missing inputs that materially change the answer, and either ask for them or ask explicit permission to proceed with named assumptions.',
@@ -909,7 +910,7 @@ export function useWebMcp(options: Options): void {
             completion:
               'A recommendation is complete when the user has a primary choice, a trade-off or alternative, supporting catalog facts, and any important missing evidence or assumptions stated.',
             sameViewRule:
-              'Whenever the user and the agent both need to be looking at the same thing — a comparison set, a listening-lab simulation, a custom build, a reference track — call navigate_acoustom (or the dedicated set_* tool) before describing it. After navigation, invite the user to review or change the visible controls; navigation is not consent.',
+              'Keep the user and agent on the same visible work surface. Navigate before each major stage — comparison, builder configuration, validation result, listening-lab simulation, or reference track — then perform the stage, briefly report what changed, and continue automatically. Do not ask for confirmation between ordinary steps; navigation is not consent, and pausing is needed only for missing material input, an explicit user decision, or an irreversible action.',
             responseMode: {
               rule:
                 'Use the specialised workflow response structure after completing a recommendation, comparison, custom-build, or room-simulation step. Use natural conversation for ordinary follow-ups that do not advance one of those workflows.',
@@ -1055,7 +1056,7 @@ export function useWebMcp(options: Options): void {
               constraints: [
                 'If a room image estimate was applied, call get_current_room_spec or rely on the live room state; do not reconstruct its dimensions or layout from memory.',
                 'State whether the simulation used live room inputs or explicit overrides.',
-                'Treat personalisation as subject to design review when warnings or its status say so.',
+                'Treat personalisation as subject to design review when warnings or its status say so. Keep the builder and Listening Lab visible throughout: navigate, perform the next ordinary step, brief the user, and continue without an intermediate confirmation.',
               ],
             },
             {
