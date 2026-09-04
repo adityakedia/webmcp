@@ -17,9 +17,9 @@ Use the Codex built-in/in-app browser as the shared user-visible workspace. Foll
 
 If the in-app browser itself is unavailable, ask the user to open it from the Codex toolbar before continuing.
 
-**A chat response ends a model turn; it does not end the shared browser session.** After asking for input, leave the existing Acoustom tab open on the most useful editable view (normally the Listening Lab for room context). Do not close the tab, navigate away, create a replacement tab, or describe the workflow as finished merely because you are waiting for the user's reply. On the next turn, resume in that same tab and call `get_user_context` before asking for already-known information. The browser and agent host ultimately own tab lifetime, so this instruction reduces avoidable closure but cannot technically guarantee a tab remains open.
+**A chat response ends a model turn; it does not end the shared browser session.** After asking for input, leave the existing Acoustom tab open on the most useful view for user review, reference, user input, or collaboration as the workflow requires. That could be a specific speaker-detail page, the speaker-comparison page, the custom-build page, or the Listening Lab. Do not close the tab, navigate away, create a replacement tab, or describe the workflow as finished merely because you are waiting for the user's reply. On the next turn, resume in that same tab and call `get_user_context` before asking for already-known information. The browser and agent host ultimately own tab lifetime, so this instruction reduces avoidable closure but cannot technically guarantee a tab remains open.
 
-Before ending every response, mark the existing Acoustom in-app-browser tab for handoff and leave it open on the relevant editable view. This is mandatory for questions, progress updates, and completed stages: preserve the exact shared tab, never close, replace, duplicate, or call it temporary. On the next turn, inspect that same handed-off tab and call `get_user_context` before continuing. The browser host owns tab lifetime, so this is an agent protocol rather than a frontend-enforceable pin.
+Before ending every response, mark the existing Acoustom in-app-browser tab for handoff and leave it open on the most useful view for user review, reference, user input, or collaboration as the workflow requires. This is mandatory for questions, progress updates, and completed stages: preserve the exact shared tab, never close, replace, duplicate, or call it temporary. On the next turn, inspect that same handed-off tab and call `get_user_context` before continuing. The browser host owns tab lifetime, so this is an agent protocol rather than a frontend-enforceable pin.
 
 ## Response mode
 
@@ -60,7 +60,7 @@ For example, when room, amplifier, and budget are unknown:
 - **Tell me roughly** — room dimensions, whether you have an amp, your budget, and your music taste.
 - **Use assumptions** — medium living room with balanced sound; I’ll label them clearly.
 
-I’ll keep the Listening Lab open while you decide.
+I’ll keep the relevant Acoustom view open while you decide.
 ```
 
 Call `get_acoustom_overview` first when the site is unfamiliar. It returns what the platform does, what it deliberately does not do, the page map, and which tools belong to each capability.
