@@ -19,6 +19,8 @@ Set `includeSimulation` to true when the user wants performance evidence rather 
 
 If room data is missing and simulation would change the decision, offer the room-context prompt from guided discovery before using a default room. If listening preference would decide between otherwise close candidates, offer the music-preference prompt instead of asking the user to describe their taste at length.
 
+Before an audible comparison, offer an optional reference-track choice: use a built-in Listening Lab track or upload the user's own audio file. Do not make an upload a prerequisite. Use `set_reference_track` for a built-in option, or `upload_reference_audio` when the user supplies a supported audio data URL; the uploaded file remains browser-local and is used consistently across every comparison column.
+
 Do not mix a simulation run in one room with a simulation run in another and present the numbers as a like-for-like comparison.
 
 ## Summarise against the brief

@@ -11,6 +11,7 @@ import {
   Radio,
   Ruler,
   SlidersHorizontal,
+  Upload,
   Volume2,
   Waves,
   Weight,
@@ -23,6 +24,7 @@ import { readLocalBuilds, type LocalBuild } from '../lib/localBuilds';
 import { deriveBuildData, STANDARD_SPEC_KEYS } from '../lib/customBuildDerivation';
 import { customBuildPrice } from '../lib/customBuildOptions';
 import { renderSimulatedWav } from '../lib/simulatedAudio';
+import { useSimulationStore } from '../store/simulation';
 import { useAgentViewStore } from '../store/agentView';
 import {
   DecayChart,
@@ -148,6 +150,7 @@ function SpeakerSimulationData({
   );
 }
 export default function ComparisonPage({ products, onBack }: Props) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState<LocalBuild[]>(() => readLocalBuilds()?.builds ?? []);
   useEffect(() => {
     const refresh = () => setSaved(readLocalBuilds()?.builds ?? []);
@@ -200,9 +203,23 @@ export default function ComparisonPage({ products, onBack }: Props) {
   ]);
   const [chooser, setChooser] = useState<number | null>(null);
   const [audio, setAudio] = useState<Record<string, AudioState>>({});
+  const referenceAudioFile = useSimulationStore((state) => state.audioFile);
+  const setReferenceAudioFile = useSimulationStore((state) => state.setAudioFile);
+  const [uploadedReferenceUrl, setUploadedReferenceUrl] = useState<string | null>(null);
   const agentSelection = useAgentViewStore((state) => state.comparisonSelection);
   const agentSelectionSource = useAgentViewStore((state) => state.comparisonSelectionSource);
   const setAgentSelection = useAgentViewStore((state) => state.setComparisonSelection);
+  const activeReferenceTrackLabel = useAgentViewStore((state) => state.activeReferenceTrackLabel);
+  const setActiveReferenceTrackLabel = useAgentViewStore((state) => state.setActiveReferenceTrackLabel);
+  useEffect(() => {
+    if (!referenceAudioFile) {
+      setUploadedReferenceUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(referenceAudioFile);
+    setUploadedReferenceUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [referenceAudioFile]);
   useEffect(() => {
     if (agentSelectionSource !== 'agent' || !choices.length) return;
     const next = (agentSelection.length ? agentSelection : [choices[0]?.id ?? ''])
@@ -264,10 +281,10 @@ export default function ComparisonPage({ products, onBack }: Props) {
     const abort = new AbortController(),
       urls: string[] = [];
     const run = async () => {
-      const source = await fetch(referenceTrackUrl);
-      const track = new File([await source.blob()], 'reference.wav', {
-        type: 'audio/wav',
-      });
+      const track = referenceAudioFile ?? await (async () => {
+        const source = await fetch(referenceTrackUrl);
+        return new File([await source.blob()], 'reference.wav', { type: 'audio/wav' });
+      })();
       await Promise.all(
         selected.map(async (s) => {
           if (!s.product && !s.profile) return;
@@ -320,7 +337,10 @@ export default function ComparisonPage({ products, onBack }: Props) {
       abort.abort();
       urls.forEach(URL.revokeObjectURL);
     };
-  }, [selected]);
+  }, [selected, referenceAudioFile]);
+  const referenceTrackSource = uploadedReferenceUrl ?? referenceTrackUrl;
+  const referenceTrackLabel =
+    activeReferenceTrackLabel ?? referenceAudioFile?.name ?? 'Reference track';
   const cells = (f: (s: Speaker | null, i: number) => React.ReactNode) => resolvedSlots.map(f);
   return (
     <main className="comparison-page comparison-redesign">
@@ -398,7 +418,22 @@ export default function ComparisonPage({ products, onBack }: Props) {
           <div className="matrix-head">
             <span>Sound simulation</span>
             <small>Original reference</small>
-            <Player source={referenceTrackUrl} label="Reference track" />
+            <Player source={referenceTrackSource} label={referenceTrackLabel} />
+            <button className="matrix-upload-track" onClick={() => fileInput.current?.click()}>
+              <Upload size={14} /> Upload your track
+            </button>
+            <input
+              ref={fileInput}
+              hidden
+              type="file"
+              accept="audio/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setReferenceAudioFile(file);
+                setActiveReferenceTrackLabel(file.name);
+              }}
+            />
           </div>
           {cells((s, i) => (
             <div className="matrix-cell matrix-sound" key={i}>

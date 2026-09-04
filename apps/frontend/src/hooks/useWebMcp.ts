@@ -670,6 +670,7 @@ const TOOL_CATEGORIES: Record<string, string> = {
   get_live_simulation_result: 'simulation',
   list_reference_tracks: 'listening',
   set_reference_track: 'listening',
+  upload_reference_audio: 'listening',
   set_music_preferences: 'listening',
   get_shared_simulated_audio: 'listening',
   get_custom_speaker_builder_options: 'custom_build',
@@ -1124,8 +1125,9 @@ export function useWebMcp(options: Options): void {
                 'Return a playable, browser-rendered room-simulation WAV after the user has explicitly approved sharing their source track.',
               steps: [
                 {
-                  tool: 'set_reference_track',
-                  useOutput: 'Make sure the listening lab is using a track that represents the user’s music.',
+                  tool: 'set_reference_track | upload_reference_audio',
+                  useOutput:
+                    'Offer the optional choice of an Acoustom track or the user’s own uploaded track; do not require upload. Make sure the listening lab is using the chosen track.',
                 },
                 {
                   tool: 'simulate_speaker_in_room | simulate_custom_speaker_in_room',

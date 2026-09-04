@@ -67,6 +67,7 @@ const skillSources: Array<{ markdown: string; whenToUse: string; tools: string[]
       'list_local_builds',
       'get_product',
       'simulate_speaker_in_room',
+      'upload_reference_audio',
     ],
   },
   {
@@ -96,6 +97,7 @@ const skillSources: Array<{ markdown: string; whenToUse: string; tools: string[]
       'get_current_room_spec',
       'set_listening_lab_speaker',
       'set_reference_track',
+      'upload_reference_audio',
       'refresh_room_simulation',
       'get_live_simulation_result',
       'get_shared_simulated_audio',
@@ -182,6 +184,7 @@ export const acoustomOverview = {
     listening: [
       'list_reference_tracks',
       'set_reference_track',
+      'upload_reference_audio',
       'set_music_preferences',
       'get_shared_simulated_audio',
     ],

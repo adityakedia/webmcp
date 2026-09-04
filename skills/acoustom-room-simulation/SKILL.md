@@ -58,7 +58,7 @@ For `specification_based` output, say that the speaker profile is estimated from
 
 `impulseResponses.left` and `.right` are WAV room impulse responses, not a finished listening clip. They can be convolved with a source track by a compatible client. Do not present an RIR by itself as what the speaker sounds like, and do not say that an audio audition was produced unless a tool returned a rendered audio artifact.
 
-To let the user hear the room, choose a representative track with `set_reference_track` (`list_reference_tracks` returns the built-in options) and ask them to press play. The lab renders the room version in the browser; `get_shared_simulated_audio` returns that rendered WAV only after the user chooses "Share with agent".
+Before selecting a built-in track, offer the user an optional choice: use an Acoustom reference track or upload their own audio file for the simulation. Do not require an upload. Use `list_reference_tracks` and `set_reference_track` for the built-in choices. If the user wants their own track and provides an audio data URL, use `upload_reference_audio`; it keeps the file in this browser and is not uploaded to Acoustom servers. Ask the user to press play once the track is ready. The lab renders the room version in the browser; `get_shared_simulated_audio` returns that rendered WAV only after the user chooses "Share with agent".
 
 If the user's room came from images, apply it with `attach_room_reference_images` and `apply_agent_room_estimate` before simulating, and never describe the procedural room view as a reconstruction of the photograph.
 
