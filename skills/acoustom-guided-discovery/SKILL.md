@@ -19,6 +19,8 @@ If the in-app browser itself is unavailable, ask the user to open it from the Co
 
 **A chat response ends a model turn; it does not end the shared browser session.** After asking for input, leave the existing Acoustom tab open on the most useful editable view (normally the Listening Lab for room context). Do not close the tab, navigate away, create a replacement tab, or describe the workflow as finished merely because you are waiting for the user's reply. On the next turn, resume in that same tab and call `get_user_context` before asking for already-known information. The browser and agent host ultimately own tab lifetime, so this instruction reduces avoidable closure but cannot technically guarantee a tab remains open.
 
+Before ending every response, mark the existing Acoustom in-app-browser tab for handoff and leave it open on the relevant editable view. This is mandatory for questions, progress updates, and completed stages: preserve the exact shared tab, never close, replace, duplicate, or call it temporary. On the next turn, inspect that same handed-off tab and call `get_user_context` before continuing. The browser host owns tab lifetime, so this is an agent protocol rather than a frontend-enforceable pin.
+
 ## Response mode
 
 Use the structured response required by the specialised skill whenever you complete a recommendation, comparison, custom-build, or room-simulation step. Keep ordinary follow-up questions and explanations conversational unless they start or materially advance one of those workflows.
