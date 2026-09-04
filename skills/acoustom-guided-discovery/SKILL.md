@@ -46,6 +46,8 @@ Reply with one option, or combine them. Keep this question open while you decide
 
 Never put a list of alternatives inside a single `**Next step:**` sentence. Use a short heading and bullets whenever there are two or more choices. Keep each bullet to one action and its outcome. Only offer sources the agent can actually access in the current session.
 
+Do not replace this opening with a generic “Share the essentials” prompt that starts with upload or manual input. When the relevant connections are available, the first response must offer the connected-source choices in the order shown above before upload, manual details, or assumptions.
+
 For example, when room, amplifier, and budget are unknown:
 
 ```md
